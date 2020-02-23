@@ -1,0 +1,5 @@
+vsc_workspace.code-workspace
+.idea/
+__init__.py
+config.py
+__pycache__/
