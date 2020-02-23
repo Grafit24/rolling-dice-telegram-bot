@@ -16,6 +16,10 @@ from telegram import ParseMode
 
 from dice_roll import Dice
 from message import separateMessage
+from exceptions import LengthException
+from exceptions import CountException
+from exceptions import DiceException
+
 import config
 
 # Enable logging
@@ -46,11 +50,13 @@ def roll(update, context):
         except AttributeError:
             query = None
             message_text = update.message.text
+        #
         if len(message_text) > 300:
-            raise Exception
+            raise LengthException(len(message_text))
         # Get separate message by operators
         message = separateMessage(message_text)
         print(message)
+
         # Roll operation
         text = str()
         count_str = str()
@@ -71,6 +77,7 @@ def roll(update, context):
                 count_str += x
         # count of expressins
         count = eval(count_str)
+
         # Formatting text
         if roll.count > 1:
             text += ' =\n'
@@ -79,11 +86,13 @@ def roll(update, context):
         if len(message) > 1:
             text += f'= {count_str} =\n'
         text += '<b>' + str(round(count)) + '</b>'
+
         # Check crit
         if roll.dice == 20 and sum(roll.result) == 20 and roll.count == 1:
             text += ' : Critical Hit!'
         elif roll.dice == 20 and sum(roll.result) == 1 and roll.count == 1:
             text += ' : Critical Fail!'
+
         # Set last message
         reply_markup = InlineKeyboardMarkup([[
             InlineKeyboardButton('Reroll', callback_data=message_text)
@@ -101,8 +110,8 @@ def roll(update, context):
                                             reply_markup = reply_markup ,
                                             parse_mode = ParseMode.HTML
                                             )
-    except Exception:
-        pass
+    except (LengthException ,CountException, DiceException):
+         pass
 
 
 # def roll_stats(update, context):
