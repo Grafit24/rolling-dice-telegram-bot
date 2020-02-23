@@ -114,31 +114,31 @@ def roll(update, context):
          pass
 
 
-# def roll_stats(update, context):
-#     text: str
-#     len_args: int
-#     roll: Dice
-#     text = ''
-#     len_args = len(context.args)
-#     if len_args > 0:
-#         args = context.args
-#     else:
-#         args = [0 for mod in range(6)]
-#         len_args = 6
-#     for x in range(len_args):
-#         roll = Dice()
-#         roll.rollStats()
-#         mod = args[x]
-#         # min roll result
-#         roll_result_text = str(tuple(roll.result[:roll.exc_id]))[:-1] + f', <b>{roll.result[roll.exc_id]}</b>' + str(tuple(roll.result[roll.exc_id+1:]))[1:]
-#         text += f'<b>{roll.result_stats + mod}</b> : '
-#         if mod == 0: mod = ''
-#         text += roll_result_text + str(mod)
-#         text += '\n'
-#     update.message.bot.send_message(chat_id = update.message.chat_id,
-#                                     text = text,
-#                                     parse_mode=ParseMode.HTML
-#                                     )
+def roll_stats(update, context):
+    text: str
+    len_args: int
+    roll: Dice
+    text = ''
+    len_args = len(context.args)
+    if len_args > 0:
+        args = context.args
+    else:
+        args = [0 for mod in range(6)]
+        len_args = 6
+    for x in range(len_args):
+        roll = Dice()
+        roll.rollStats()
+        mod = args[x]
+        # min roll result
+        roll_result_text = str(tuple(roll.result[:roll.exc_id]))[:-1] + f', <b>{roll.result[roll.exc_id]}</b>' + str(tuple(roll.result[roll.exc_id+1:]))[1:]
+        text += f'<b>{roll.result_stats + mod}</b> : '
+        if mod == 0: mod = ''
+        text += roll_result_text + str(mod)
+        text += '\n'
+    update.message.bot.send_message(chat_id = update.message.chat_id,
+                                    text = text,
+                                    parse_mode=ParseMode.HTML
+                                    )
 
 
 def error(update, context):
