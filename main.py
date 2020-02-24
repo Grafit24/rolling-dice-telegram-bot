@@ -47,8 +47,11 @@ def roll(update, context):
         try:
             query = update.callback_query
             message_text = query.data
+            username = query.message.text[:query.message.text.index('\n')]
+            print(username)
         except AttributeError:
             query = None
+            username = f'@{update.message.from_user.username}\n'
             message_text = update.message.text
         #
         if len(message_text) > 300:
@@ -100,13 +103,13 @@ def roll(update, context):
         if query != None:
             query.edit_message_text(query.message.text)
             query.message.bot.send_message(chat_id = query.message.chat_id ,
-                                           text = f'REROLLED {message_text}\n' + text ,
+                                           text = username + '\n' + f'REROLLED {message_text}\n' + text ,
                                            reply_markup = reply_markup ,
                                            parse_mode = ParseMode.HTML
                                            )
         else:
             update.message.bot.send_message(chat_id = update.message.chat_id ,
-                                            text = text ,
+                                            text=username + '\n' + text,
                                             reply_markup = reply_markup ,
                                             parse_mode = ParseMode.HTML
                                             )
