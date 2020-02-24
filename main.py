@@ -3,6 +3,7 @@
 """All server work with telegram-bot"""
 
 import logging
+import re
 
 from telegram.ext import CommandHandler
 from telegram.ext import Filters
@@ -116,26 +117,16 @@ def roll(update, context):
 
 def roll_stats(update, context):
     text: str
-    len_args: int
     roll: Dice
     text = ''
-    len_args = len(context.args)
     username = f'@{update.message.from_user.username}'
-    if len_args > 0:
-        args = context.args
-    else:
-        args = [0 for mod in range(6)]
-        len_args = 6
-    for x in range(len_args):
+    for x in range(6):
         roll = Dice()
         roll.rollStats()
-        mod = args[x]
+        min_roll = min(roll.result)
         # min roll result
-        roll_result_text = str(tuple(roll.result[:roll.exc_id]))[:-1] + f', <b>{roll.result[roll.exc_id]}</b>' + str(tuple(roll.result[roll.exc_id+1:]))[1:]
-        text += f'<b>{roll.result_stats + mod}</b> : '
-        if mod == 0: mod = ''
-        text += roll_result_text + str(mod)
-        text += '\n'
+        roll_result_text = re.sub(f'{min_roll}' , f'<b>{min_roll}</b>' , str(roll.result) , count=1)
+        text += f'<b>{roll.result_stats}</b> : {roll_result_text}\n'
     update.message.bot.send_message(chat_id = update.message.chat_id,
                                     text = username + '\n' + text,
                                     parse_mode=ParseMode.HTML
