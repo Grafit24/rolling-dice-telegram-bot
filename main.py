@@ -120,6 +120,7 @@ def roll_stats(update, context):
     roll: Dice
     text = ''
     len_args = len(context.args)
+    username = f'@{update.message.from_user.username}'
     if len_args > 0:
         args = context.args
     else:
@@ -136,7 +137,7 @@ def roll_stats(update, context):
         text += roll_result_text + str(mod)
         text += '\n'
     update.message.bot.send_message(chat_id = update.message.chat_id,
-                                    text = text,
+                                    text = username + '\n' + text,
                                     parse_mode=ParseMode.HTML
                                     )
 
@@ -158,7 +159,7 @@ def main():
     dp.add_handler(MessageHandler(Filters.text, roll))
     dp.add_handler(CommandHandler('r', roll))
     dp.add_handler(CallbackQueryHandler(roll))
-    # dp.add_handler(CommandHandler('rstats', roll_stats))
+    dp.add_handler(CommandHandler('rstats', roll_stats))
     dp.add_handler(CommandHandler('start', start))
 
     # log all errors
