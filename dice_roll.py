@@ -65,15 +65,15 @@ class Dice:
         self.result = tuple(all_rolls[index])
         self.isstats = False
 
-    # def rollStats(self, *arg):
-    #     '''Rolling simple stats of dnd5'''
-    #     self.Roll('4d6')
-    #     self.isstats = True
-    #     roll = list(self.result)
-    #     min_r = min(roll)
-    #     roll.remove(min_r)
-    #     self.exc_id = self.result.index(min_r)
-    #     self.result_stats = sum(roll)
+    def rollStats(self, *arg):
+        '''Rolling simple stats of dnd5'''
+        self.Roll('4d6')
+        self.isstats = True
+        roll = list(self.result)
+        min_r = min(roll)
+        roll.remove(min_r)
+        self.exc_id = self.result.index(min_r)
+        self.result_stats = sum(roll)
 
     def rollFateDice(self) -> tuple:
        pass

@@ -3,6 +3,7 @@
 """All server work with telegram-bot"""
 
 import logging
+import re
 
 from telegram.ext import CommandHandler
 from telegram.ext import Filters
@@ -13,6 +14,7 @@ from telegram import CallbackQuery
 from telegram import InlineKeyboardMarkup
 from telegram import InlineKeyboardButton
 from telegram import ParseMode
+from telegram.ext.dispatcher import run_async
 
 from dice_roll import Dice
 from message import separateMessage
@@ -30,7 +32,6 @@ logger = logging.getLogger(__name__)
 
 def start(update, context):
     pass
-
 
 def roll(update, context):
     """Roll dices by message and calculate more these"""
@@ -116,32 +117,50 @@ def roll(update, context):
     except (LengthException ,CountException, DiceException):
          pass
 
+@run_async
+def roll_stats(update, context):
+    '''Roll stats by template dnd 5e.
+    Roll 6 4d6 and 3 most regular 6 times
 
-# def roll_stats(update, context):
-#     text: str
-#     len_args: int
-#     roll: Dice
-#     text = ''
-#     len_args = len(context.args)
-#     if len_args > 0:
-#         args = context.args
-#     else:
-#         args = [0 for mod in range(6)]
-#         len_args = 6
-#     for x in range(len_args):
-#         roll = Dice()
-#         roll.rollStats()
-#         mod = args[x]
-#         # min roll result
-#         roll_result_text = str(tuple(roll.result[:roll.exc_id]))[:-1] + f', <b>{roll.result[roll.exc_id]}</b>' + str(tuple(roll.result[roll.exc_id+1:]))[1:]
-#         text += f'<b>{roll.result_stats + mod}</b> : '
-#         if mod == 0: mod = ''
-#         text += roll_result_text + str(mod)
-#         text += '\n'
-#     update.message.bot.send_message(chat_id = update.message.chat_id,
-#                                     text = text,
-#                                     parse_mode=ParseMode.HTML
-#                                     )
+    Command use to call:
+    /rs
+    /rstats
+    '''
+    roll: Dice
+    text = str()
+    all_roll = []
+    username = f'@{update.message.from_user.username}'
+    # Roll stats
+    for x in range(6):
+        roll = Dice()
+        roll.rollStats()
+        min_roll = min(roll.result)
+        # min roll result
+        roll_result_text = re.sub(f'{min_roll}' , f'<b>{min_roll}</b>' , str(roll.result) , count=1)
+        # formating text
+        all_roll.append(f'<b>{roll.result_stats}</b> : {roll_result_text}\n')
+    # Sort by min or max
+    if len(context.args) != 0:
+        if context.args[0] == '+':
+            # from more to less
+            all_roll.sort(key=lambda x: int(
+                re.search(r'^<b>\d+', x).group(0)[3:])
+                )
+            all_roll.reverse()
+        elif context.args[0] == '-':
+            # from less to more
+            all_roll.sort(key=lambda x: int(
+                re.search(r'^<b>\d+', x).group(0)[3:])
+                )
+    # Message
+    # add every roll to message
+    for x in all_roll:
+        text += x
+    # send message to user
+    update.message.bot.send_message(chat_id = update.message.chat_id,
+                                    text = username + '\n' + text,
+                                    parse_mode=ParseMode.HTML
+                                    )
 
 
 def error(update, context):
@@ -159,9 +178,8 @@ def main():
 
     # on different command - answer on Telegram
     dp.add_handler(MessageHandler(Filters.text, roll))
-    dp.add_handler(CommandHandler('r', roll))
     dp.add_handler(CallbackQueryHandler(roll))
-    # dp.add_handler(CommandHandler('rstats', roll_stats))
+    dp.add_handler(CommandHandler(['rstats' , 'rs'], roll_stats))
     dp.add_handler(CommandHandler('start', start))
 
     # log all errors
