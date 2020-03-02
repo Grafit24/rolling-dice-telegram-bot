@@ -75,8 +75,29 @@ class Dice:
         self.exc_id = self.result.index(min_r)
         self.result_stats = sum(roll)
 
-    def rollFateDice(self) -> tuple:
-       pass
+    def rollFateDice(self , mod=0) -> tuple:
+        rollFD = []
+        rollN = []
+        values_fd = {
+            '0':'[ ]',
+            '1':'[+]',
+            '-1':'[-]',
+        }
+        values = (1, 
+                 0, 
+                 -1,
+                )
+        for x in range(4):
+            roll = Dice()
+            roll.Roll('1d3')
+            rollN.append(values[sum(roll.result)-1])
+            rollFD.append(values_fd[str(rollN[-1])])
+        self.result = tuple(rollN)
+        self.result_fate = rollFD
+        self.result_int = int(sum(rollN) + mod)
+        self.mod = mod
+
+
 
     def __str__(self):
         text = 'count : %d\ndice : %d\nresult : %r' % (self.count,
