@@ -162,6 +162,20 @@ def roll_stats(update, context):
                                     parse_mode=ParseMode.HTML
                                     )
 
+@run_async
+def roll_fate_dice(update , context):
+    roll = Dice()
+    try:
+        roll.rollFateDice(mod = int(context.args[0]))
+    except IndexError:
+        roll.rollFateDice()
+    rf = re.sub(r'[\',\,]' , '' , str(roll.result_fate)[1:-1])
+    text = f'@{update.message.from_user.username}\n'
+    text += f'{rf} = <b>{roll.result_int}</b>'
+    update.message.bot.send_message(chat_id = update.message.chat_id,
+                                    text = text,
+                                    parse_mode = ParseMode.HTML
+                                    )
 
 def error(update, context):
     """Log Errors caused by Updates."""
@@ -180,6 +194,7 @@ def main():
     dp.add_handler(MessageHandler(Filters.text, roll))
     dp.add_handler(CallbackQueryHandler(roll))
     dp.add_handler(CommandHandler(['rstats' , 'rs'], roll_stats))
+    dp.add_handler(CommandHandler('rf' , roll_fate_dice))
     dp.add_handler(CommandHandler('start', start))
 
     # log all errors
