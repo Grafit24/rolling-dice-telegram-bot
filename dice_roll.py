@@ -1,107 +1,161 @@
 """Dump for any different fun"""
+from typing import Type , List
 import random
-
+import re
 
 class Dice:
-    """Roll dice and stores data about it"""
+    """Roll any dice and stores data about it.
+    Attributes:
+    Args:
+    Raises
+    """
     count: int
     dice: int
-    isprior: bool
-    all_rolls: tuple
     result: tuple
+    result_sum: int
+    #Optional
+    consequences: Type
+    allrolls: list
+    typeroll: str
+
+    def __init__(self , adv = None):
+        self.consequences = Consequences(obj=self , adv=adv)
+
+
+    def __str__(self):
+        '''Formating obj for read'''
+        # remove ' and , out of result str
+        text = re.sub(r'[\',\,]', '', str(self.result)[1:-1])
+        text = re.sub(r'-?\d+', lambda x: f'[{x.group(0)}]', text)
+
+        if self.typeroll == 'fatedice':
+            # change the numbers to sign
+            val_sign = {
+                '0': ' ',
+                '1': '+',
+                '-1': '-',
+            }
+            text = re.sub(r'-?\d', lambda x: val_sign[x.group(0)], text)
+
+        elif self.typeroll == 'stat':
+            # Maked min number bolding
+            min_num = min(self.result)
+            text = re.sub(
+                f'{min_num}',
+                lambda x: f'<b>{x.group(0)}</b>',
+                text,
+                count=1,
+            )
+
+        return text
+        
 
     def Roll(self, count_dice: str):
-        """Roll any dice by template"""
-        # Variables
-        prior = None
-        all_rolls = []
-        all_sum_rolls = []
-        # unloading array
-        if count_dice[0] == 'd':
-            count_dice = '1' + count_dice
-            print(count_dice)
+        """Roll any dice by template(ndn ,  n - natural number)"""
+        # mult = 2 if throw with adv/disadv
+        mult = 2 if self.consequences!=None else 1
+
+        # unpack data 
         count_roll, dice = count_dice.split('d')
         count_roll = int(count_roll)
-        # try dice make int
-        try:
-            mult = 1
-            dice = int(dice)
-        # if dice make except that
-        # in dice have char - advantage or disadvantage
-        except:
-            mult = 2
-            # set adv or disadv
-            if dice[-1] in ('A', 'Adv', 'adv'):
-                prior = max
-            elif dice[-1] in ('D', 'Disadv', 'disadv'):
-                prior = min
-            # else: raise Error
-            # exclude char
-            dice = int(dice[:-1])
-        rolls = []
-        # Roll with adv/dadv and  without
-        for y in range(mult):
-            # Roll every dice
-            for x in range(count_roll):
+        dice = int(dice)
+
+        allrolls = []
+        for rolls in range(mult):
+            rolls = []
+            for roll in range(count_roll):
                 roll = random.randint(1, dice)
                 rolls.append(roll)
-            all_rolls.append(rolls.copy())
-            all_sum_rolls.append(sum(rolls))
-            rolls.clear()
-        #
-        print('All rolls :', str(all_rolls))
-        # Make adv/disadv
-        if prior != None:
-            index = all_sum_rolls.index(prior(all_sum_rolls))
-            self.isprior = True
-        # Make without
-        else:
-            self.isprior = False
-            index = 0
-        # Set var
+            allrolls.append(rolls.copy())
+
+        # Make adv/disadv/base
+        print(allrolls)
+        self.allrolls = tuple(allrolls)
+        index = self.consequences.result()
+
         self.count = count_roll
         self.dice = dice
-        self.all_rolls = tuple(all_rolls)
-        self.result = tuple(all_rolls[index])
-        self.isstats = False
+        self.result = tuple(allrolls[index])
+        self.result_sum = sum(allrolls[index])
+        self.typeroll = 'classic'
+
+        return self
+
 
     def rollStats(self, *arg):
         '''Rolling simple stats of dnd5'''
+        self.consequences = Consequences(self , adv=None)
         self.Roll('4d6')
-        self.isstats = True
         roll = list(self.result)
+        # extract min value
         min_r = min(roll)
         roll.remove(min_r)
-        self.exc_id = self.result.index(min_r)
-        self.result_stats = sum(roll)
 
-    def rollFateDice(self , mod=0) -> tuple:
-        rollFD = []
-        rollN = []
-        values_fd = {
-            '0':'[ ]',
-            '1':'[+]',
-            '-1':'[-]',
-        }
+        self.count = None
+        self.dice = None
+        self.result_sum = sum(roll)
+        self.typeroll = 'stat'
+        self.allrolls = None
+
+        return self
+
+
+    def rollFateDice(self):
+        '''Rolling fudge dice'''
+        # mult = 2 if throw with adv/disadv
+        mult = 2 if self.consequences!=None else 1
         values = (1, 
                  0, 
                  -1,
                 )
-        for x in range(4):
-            roll = Dice()
-            roll.Roll('1d3')
-            rollN.append(values[sum(roll.result)-1])
-            rollFD.append(values_fd[str(rollN[-1])])
-        self.result = tuple(rollN)
-        self.result_fate = rollFD
-        self.result_int = int(sum(rollN) + mod)
-        self.mod = mod
+
+        allrolls = []
+        arsum = []
+        for rolls in range(mult):
+            rolls = []
+            for roll in range(4):
+                roll = Dice()
+                roll.Roll('1d3')
+                rolls.append(values[sum(roll.result)-1])
+            allrolls.append(rolls)
+            arsum.append(sum(rolls))
+
+        # Make adv/disadv/base
+        self.allrolls = tuple(allrolls)
+        index = self.consequences.result()
+
+        self.count = 4
+        self.dice = 'F'
+        self.result = tuple(allrolls[index])
+        self.result_sum = sum(allrolls[index])
+        self.allrolls = allrolls
+        self.typeroll = 'fatedice'
+
+        return self
 
 
+class Consequences:
+    '''Type for adv/dadv/without'''
+    def __init__(self , obj , adv=None):
+        self.adv = adv
+        self.obj = obj
+    
+    def __eq__(self, value):
+        if self.adv == value: return True
+        else: return False
 
-    def __str__(self):
-        text = 'count : %d\ndice : %d\nresult : %r' % (self.count,
-                                                       self.dice,
-                                                       self.result
-                                                       )
-        return text
+    def __ne__(self, value):
+        if self.adv != value: return True
+        else: return False
+
+    def __bool__(self):
+        return self.adv
+
+    def result(self):
+        if self.adv == None:
+            print(True)
+            return 0
+        prior = max if self.adv else min
+        arsum = [sum(x)for x in self.obj.allrolls]
+        index = arsum.index(prior(arsum))
+        return index
