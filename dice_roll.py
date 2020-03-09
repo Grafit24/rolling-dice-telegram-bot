@@ -20,34 +20,6 @@ class Dice:
 
     def __init__(self , adv = None):
         self.consequences = Consequences(obj=self , adv=adv)
-
-
-    def __str__(self):
-        '''Formating obj for read'''
-        # remove ' and , out of result str
-        text = re.sub(r'[\',\,]', '', str(self.result)[1:-1])
-        text = re.sub(r'-?\d+', lambda x: f'[{x.group(0)}]', text)
-
-        if self.typeroll == 'fatedice':
-            # change the numbers to sign
-            val_sign = {
-                '0': ' ',
-                '1': '+',
-                '-1': '-',
-            }
-            text = re.sub(r'-?\d', lambda x: val_sign[x.group(0)], text)
-
-        elif self.typeroll == 'stat':
-            # Maked min number bolding
-            min_num = min(self.result)
-            text = re.sub(
-                f'{min_num}',
-                lambda x: f'<b>{x.group(0)}</b>',
-                text,
-                count=1,
-            )
-
-        return text
         
 
     def Roll(self, count_dice: str):
@@ -69,7 +41,6 @@ class Dice:
             allrolls.append(rolls.copy())
 
         # Make adv/disadv/base
-        print(allrolls)
         self.allrolls = tuple(allrolls)
         index = self.consequences.result()
 
@@ -133,6 +104,82 @@ class Dice:
 
         return self
 
+    def __add__(self , value):
+        '''+'''
+        return self.result_sum + value
+
+    def __sub__(self, value):
+        '''-'''
+        return self.result_sum - value
+
+    def __mul__(self, value):
+        '''*'''
+        return self.result_sum * value
+
+    def __truediv__(self, value):
+        '''/'''
+        return self.result_sum / value
+
+    # def __lt__(self, value):
+    #     '''<'''
+    #     return self.result_sum < value
+
+    # def __le__(self, value):
+    #     '''<='''
+    #     self.result_sum <= value
+
+    # def __eq__(self, value):
+    #     '''=='''
+    #     self.result_sum == value
+
+    # def __ne__(self, value):
+    #     '''!='''
+    #     self.result_sum != value
+
+    # def __gt__(self, value):
+    #     '''>'''
+    #     self.result_sum > value
+
+    # def __ge__(self, value):
+    #     '''>='''
+    #     self.result_sum >= value
+
+    def __int__(self):
+        return self.result_sum
+
+    def __len__(self):
+        return self.count * self.dice
+
+    def __contains__(self , item):
+        return item in self.result
+
+    def __str__(self):
+        '''Formating obj for read'''
+        # remove ' and , out of result str
+        text = re.sub(r'[\',\,]', '', str(self.result)[1:-1])
+        text = re.sub(r'-?\d+', lambda x: f'[{x.group(0)}]', text)
+
+        if self.typeroll == 'fatedice':
+            # change the numbers to sign
+            val_sign = {
+                '0': ' ',
+                '1': '+',
+                '-1': '-',
+            }
+            text = re.sub(r'-?\d', lambda x: val_sign[x.group(0)], text)
+
+        elif self.typeroll == 'stat':
+            # Maked min number bolding
+            min_num = min(self.result)
+            text = re.sub(
+                f'{min_num}',
+                lambda x: f'<b>{x.group(0)}</b>',
+                text,
+                count=1,
+            )
+
+        return text
+
 
 class Consequences:
     '''Type for adv/dadv/without'''
@@ -153,9 +200,12 @@ class Consequences:
 
     def result(self):
         if self.adv == None:
-            print(True)
             return 0
         prior = max if self.adv else min
         arsum = [sum(x)for x in self.obj.allrolls]
         index = arsum.index(prior(arsum))
         return index
+
+#print(Dice().rollFateDice())
+#print(Dice().rollStats())
+print(Dice().Roll('1d20'))
