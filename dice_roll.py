@@ -1,29 +1,76 @@
 """Dump for any different fun"""
-from typing import Type , List
+from typing import List , Optional , Union
 import random
 import re
 
+
 class Dice:
     """Roll any dice and stores data about it.
-    Attributes:
-    Args:
-    Raises
+
+    Attributes
+    ----------
+    count: int
+        The count of dice roll.
+            =None if it's typeroll is stat
+    dice: int
+        The number of faces dices 
+        -typeroll=stat-
+            =None 
+    result: tuple
+        Result of rolling
+        -typeroll=stat-
+            list is full so include in minimal value
+            (Which not included in result_sum)
+    result_sum: int
+        Sum of result
+        -typeroll=stat-
+            except minimal value of result
+    ---Optinal---
+    consequences: Consequences(obj , adv)
+        For anything doubleroll(Example: roll with advantage/disadvantage)
+    allrolls: list
+        List with 2(Always) throw, include in result inappropriate consequences.
+    typeroll: str
+        Name type of dice or special roll 
+
+    Methods
+    -------
+    Roll(count_dice: str)-> Dice
+        Roll any dices by template ndn(n - nature numbers)
+    
+    rollStats()-> Dice
+         Roll stats for dnd5.
+        (4d6 roll and remove minimal dice of it)
+        Note:
+            Have not consequences
+    
+    rollFateDice()-> Dice
+         Roll fudge dice.
+        (4d3 with values [+] [-] [])
     """
     count: int
     dice: int
     result: tuple
     result_sum: int
     #Optional
-    consequences: Type
+    consequences: 'Consequences'
     allrolls: list
     typeroll: str
 
-    def __init__(self , adv = None):
+    def __init__(self , adv:Optional[bool] = None):
         self.consequences = Consequences(obj=self , adv=adv)
         
 
-    def Roll(self, count_dice: str):
-        """Roll any dice by template(ndn ,  n - natural number)"""
+    def Roll(self, count_dice: str)-> 'Dice':
+        """Roll any dice by template(ndn ,  n - natural number).
+        Can rolling dice with consequences
+
+        Parameters
+        ----------
+        count_dice: str
+            template is ndn , n - nature number.
+        """
+
         # mult = 2 if throw with adv/disadv
         mult = 2 if self.consequences!=None else 1
 
@@ -53,8 +100,18 @@ class Dice:
         return self
 
 
-    def rollStats(self, *arg):
-        '''Rolling simple stats of dnd5'''
+    def rollStats(self)-> 'Dice':
+        '''Roll simple stats of dnd5.
+        (4d6 roll and remove minimal dice of it)
+        
+        result attr = len(list = 4)
+        result_sum attr = sum(len(list) = 3)
+
+        Example
+        -------
+        4d6 -> [4 , 5 , 2 , 1] - min -> [4 , 5 , 2] = 11
+        4d6 -> [1 , 1 , 1 , 1] - min -> [1 , 1 , 1] = 3
+        '''
         self.consequences = Consequences(self , adv=None)
         self.Roll('4d6')
         roll = list(self.result)
@@ -71,8 +128,9 @@ class Dice:
         return self
 
 
-    def rollFateDice(self):
-        '''Rolling fudge dice'''
+    def rollFateDice(self)-> 'Dice':
+        '''Roll fudge dice.(4d3 with values [+] [-] [])
+        '''
         # mult = 2 if throw with adv/disadv
         mult = 2 if self.consequences!=None else 1
         values = (1, 
@@ -148,13 +206,24 @@ class Dice:
         return self.result_sum
 
     def __len__(self):
-        return self.count * self.dice
+        return self.count
 
     def __contains__(self , item):
         return item in self.result
 
     def __str__(self):
-        '''Formating obj for read'''
+        '''Formating obj for read
+
+        Examples
+        --------
+        classic
+            5d20
+            [10] [20] [1] [12] [6]
+        fatedice
+            [+] [ ] [-] [ ]
+        stat
+            [5] [<b>1</b>] [4] [2]
+        '''
         # remove ' and , out of result str
         text = re.sub(r'[\',\,]', '', str(self.result)[1:-1])
         text = re.sub(r'-?\d+', lambda x: f'[{x.group(0)}]', text)
@@ -182,23 +251,57 @@ class Dice:
 
 
 class Consequences:
-    '''Type for adv/dadv/without'''
+    '''Type for adv/dadv/without
+
+    Attributes
+    ----------
+    adv: bool , None
+        True - with advantage
+        False - with disadvantage
+        None - without
+    obj: Dice
+        Object with data about rolls
+    
+    Methods
+    -------
+    result()-> int
+        Set index result by advantage/disadvantage
+        and return it. 
+    '''
+    adv: Union[bool , None]
+    obj: 'Dice'
+
     def __init__(self , obj , adv=None):
         self.adv = adv
         self.obj = obj
     
+
     def __eq__(self, value):
+        '''=='''
         if self.adv == value: return True
         else: return False
 
+
     def __ne__(self, value):
+        '''!='''
         if self.adv != value: return True
         else: return False
+
 
     def __bool__(self):
         return self.adv
 
-    def result(self):
+
+    def result(self)-> int:
+        '''Set index result by advantage/disadvantage
+        and return it. Function use for find in allrolls 
+        max(adv)/min(disadv)/None(without)
+
+        Returns
+        -------
+        index: int
+            allrolls[index] = result
+        '''
         if self.adv == None:
             return 0
         prior = max if self.adv else min
@@ -208,4 +311,4 @@ class Consequences:
 
 #print(Dice().rollFateDice())
 #print(Dice().rollStats())
-print(Dice().Roll('1d20'))
+#print(Dice(adv=None).Roll('1d2'))
