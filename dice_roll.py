@@ -1,4 +1,4 @@
-"""Dump for any different fun"""
+"""Dice roller"""
 from typing import List , Optional , Union
 import random
 import re
@@ -81,10 +81,7 @@ class Dice:
 
         allrolls = []
         for rolls in range(mult):
-            rolls = []
-            for roll in range(count_roll):
-                roll = random.randint(1, dice)
-                rolls.append(roll)
+            rolls = [random.randint(1 , dice) for roll in range(count_roll)]
             allrolls.append(rolls.copy())
 
         # Make adv/disadv/base
@@ -139,15 +136,11 @@ class Dice:
                 )
 
         allrolls = []
-        arsum = []
         for rolls in range(mult):
-            rolls = []
-            for roll in range(4):
-                roll = Dice()
-                roll.Roll('1d3')
-                rolls.append(values[sum(roll.result)-1])
+            rolls = [
+                values[int(Dice().Roll('1d3')) - 1] for roll in range(4)
+                ]
             allrolls.append(rolls)
-            arsum.append(sum(rolls))
 
         # Make adv/disadv/base
         self.allrolls = tuple(allrolls)
@@ -308,7 +301,3 @@ class Consequences:
         arsum = [sum(x)for x in self.obj.allrolls]
         index = arsum.index(prior(arsum))
         return index
-
-#print(Dice().rollFateDice())
-#print(Dice().rollStats())
-#print(Dice(adv=None).Roll('1d2'))
