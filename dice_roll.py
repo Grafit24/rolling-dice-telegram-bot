@@ -77,7 +77,10 @@ class Dice:
         # unpack data 
         count_roll, dice = count_dice.split('d')
         count_roll = int(count_roll)
-        dice = int(dice)
+        if dice != 'F':
+            dice = int(dice)
+        else:
+            return self.rollFateDice()
 
         allrolls = []
         for rolls in range(mult):
@@ -154,6 +157,33 @@ class Dice:
         self.typeroll = 'fatedice'
 
         return self
+    
+    @staticmethod
+    def rollList(dice_operation_list: List[str])-> List['Dice']:
+        '''Roll list of dices.'''
+        roll_list = list()
+        for x in dice_operation_list:
+            sign = x[0][-1]
+            adv = sign in ('A', 'a') \
+                if sign in ('A', 'a', 'D', 'd') else None
+            cd = x[0] if adv == None else x[0][:-1]
+            if 'F' in x:
+                roll_list = [Dice(adv=sign).rollFateDice()]
+            else:
+                roll = Dice(adv=sign).Roll(cd)
+                roll_list.append(roll)
+        return roll_list
+    
+    @staticmethod
+    def Cut(rd: 'Dice'):
+        text = str(rd)
+        start = re.search(r'^\[\d+\]', text)
+        end = re.search(r'\[\d+\]$', text)
+        text = f'{start.group(0)}...{end.group(0)}' if (rd.count >= 500)\
+             and (start != None)\
+             and (end != None)\
+            else text
+        return text
 
     def __add__(self , value):
         '''+'''
