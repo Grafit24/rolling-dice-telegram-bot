@@ -80,7 +80,7 @@ class Dice:
         if dice != 'F':
             dice = int(dice)
         else:
-            return self.rollFateDice()
+            return self.rollFateDice(count_roll)
 
         allrolls = []
         for rolls in range(mult):
@@ -104,8 +104,8 @@ class Dice:
         '''Roll simple stats of dnd5.
         (4d6 roll and remove minimal dice of it)
         
-        result attr = len(list = 4)
-        result_sum attr = sum(len(list) = 3)
+        result = len(list = 4)
+        result_sum = sum(len(list) = 3)
 
         Example
         -------
@@ -128,7 +128,7 @@ class Dice:
         return self
 
 
-    def rollFateDice(self)-> 'Dice':
+    def rollFateDice(self , dices=1)-> 'Dice':
         '''Roll fudge dice.(4d3 with values [+] [-] [])
         '''
         # mult = 2 if throw with adv/disadv
@@ -141,7 +141,7 @@ class Dice:
         allrolls = []
         for rolls in range(mult):
             rolls = [
-                values[int(Dice().Roll('1d3')) - 1] for roll in range(4)
+                values[int(Dice().Roll('1d3')) - 1] for roll in range(dices)
                 ]
             allrolls.append(rolls)
 
@@ -168,7 +168,9 @@ class Dice:
                 if sign in ('A', 'a', 'D', 'd') else None
             cd = x[0] if adv == None else x[0][:-1]
             if 'F' in x:
-                roll_list.append(Dice(adv=sign).rollFateDice())
+                roll_list.append(Dice(adv=sign).rollFateDice(
+                    int(re.search(r'\d+' , cd).group(0)))
+                    )
             else:
                 roll = Dice(adv=sign).Roll(cd)
                 roll_list.append(roll)
@@ -264,8 +266,8 @@ class Dice:
             # Maked min number bolding
             min_num = min(self.result)
             text = re.sub(
-                f'{min_num}',
-                lambda x: f'<b>{x.group(0)}</b>',
+                f'\[{min_num}\]',
+                lambda x: f'<s>{x.group(0)}</s>',
                 text,
                 count=1,
             )

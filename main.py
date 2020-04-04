@@ -78,7 +78,7 @@ def roll(update , context):
                            )
 
         reply_markup = InlineKeyboardMarkup([[
-                        InlineKeyboardButton('Reroll'),
+                        InlineKeyboardButton('Reroll' , callback_data='template'),
                         ]])
 
         send_message(chat_id=idm,
@@ -106,11 +106,46 @@ def roll(update , context):
                      parse_mode=ParseMode.HTML
                      )
 
-def roll_stats():
-    pass
+def roll_stats(update , context):
+    '''Roll stats for dnd5'''
+    vrolls = 6
+    sort_type = None
+    sort_type_bymax = ('max', 'bymax', 'h',)
+    sort_type_bymin = ('min', 'bymin', 'l',)
+    try:
+        idm = update.message.chat_id
+        if context.args != list():
+            sort_type, vrolls = context.args 
+            vrolls = int(vrolls)
 
-def roll_fate_dice():
-    pass 
+        stats = [Dice().rollStats() for x in range(vrolls)]
+        if sort_type in (sort_type_bymax + sort_type_bymin):
+            rev = sort_type in sort_type_bymax
+            stats.sort(key=lambda x: x.result_sum , reverse=rev)
+        text = '%s\n'*vrolls % tuple([f'{str(x)} : {str(x.result_sum)}' for x in stats])
+        update.message.bot.send_message(chat_id=idm,
+                                        text=text,
+                                        parse_mode=ParseMode.HTML
+                                        )
+    except LengthException:
+        pass
+
+def roll_fate_dice(update , context):
+    setting = ('adv','a')
+    try:
+        idm = update.message.chat_id
+        if context.args != list():
+            arg = True if (context.args[0] in setting[1]) else False 
+        else:
+            arg = None
+        roll = Dice(adv = arg).rollFateDice(4)
+        text = f'{str(roll)} = {int(roll)}'
+        update.message.bot.send_message(chat_id=idm,
+                                        text=text,
+                                        parse_mode=ParseMode.HTML
+                                        )
+    except LengthException:
+        pass
 
 def error(update, context):
     """Log Errors caused by Updates."""
@@ -128,8 +163,8 @@ def main():
     # on different command - answer on Telegram
     dp.add_handler(MessageHandler(Filters.text, roll))
     dp.add_handler(CallbackQueryHandler(roll))
-    # dp.add_handler(CommandHandler(['rstats' , 'rs'], roll_stats))
-    # dp.add_handler(CommandHandler('rf' , roll_fate_dice))
+    dp.add_handler(CommandHandler(['rstats' , 'rs'], roll_stats))
+    dp.add_handler(CommandHandler('rf' , roll_fate_dice))
     dp.add_handler(CommandHandler('start', start))
 
     # log all errors
