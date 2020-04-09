@@ -24,8 +24,6 @@ from exceptions import CountException
 from exceptions import DiceException
 from telegram.error import BadRequest
 
-import config
-
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -35,7 +33,8 @@ logger = logging.getLogger(__name__)
 mode = os.getenv("MODE")
 TOKEN = os.getenv("TOKEN")
 if mode == "dev":
-    PROXY = '34.68.66.135:1080'
+    PROXY = os.getenv("PROXY")
+    logger.info(str(PROXY))
     rk = {
         'proxy_url': f'socks5://{PROXY}',
     }
