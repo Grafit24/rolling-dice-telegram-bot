@@ -168,11 +168,11 @@ class Dice:
                 if sign in ('A', 'a', 'D', 'd') else None
             cd = x[0] if adv == None else x[0][:-1]
             if 'F' in x:
-                roll_list.append(Dice(adv=sign).rollFateDice(
+                roll_list.append(Dice(adv=adv).rollFateDice(
                     int(re.search(r'\d+' , cd).group(0)))
                     )
             else:
-                roll = Dice(adv=sign).Roll(cd)
+                roll = Dice(adv=adv).Roll(cd)
                 roll_list.append(roll)
         return roll_list
     

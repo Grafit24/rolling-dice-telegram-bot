@@ -4,6 +4,8 @@
 
 import logging
 import re
+import os
+import sys
 
 from telegram import CallbackQuery
 from telegram import InlineKeyboardMarkup
@@ -29,9 +31,50 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Getting mode, so we could define run function for local and Heroku setup
+mode = os.getenv("MODE")
+TOKEN = os.getenv("TOKEN")
+if mode == "dev":
+    PROXY = '34.68.66.135:1080'
+    rk = {
+        'proxy_url': f'socks5://{PROXY}',
+    }
+    def run(updater):
+        logger.info(mode)
+        updater.start_polling()
+elif mode == "prod":
+    rk = None
+    def run(updater):
+        logger.info(mode)
+        PORT = int(os.environ.get("PORT", "8443"))
+        HEROKU_APP_NAME = os.environ.get("HEROKU_APP_NAME")
+        updater.start_webhook(listen="0.0.0.0",
+                              port=PORT,
+                              url_path=TOKEN)
+        updater.bot.set_webhook(
+            "https://{}.herokuapp.com/{}".format(HEROKU_APP_NAME, TOKEN)
+            )
+else:
+    logger.error("No MODE specified!")
+    sys.exit(1)
+
+
 
 def start(update, context):
-    pass
+    logger.info(f"User {update.message.from_user.id} start use bot")
+    text = """Bot is in develop. U can use it.
+    NdNa + ...(float blocked)
+        a can be (adv - A , disadv - D)
+        N - is natural number
+    /rs
+        Roll stats by template dnd5
+    /rf 
+        Roll fudge dice
+    """
+    update.message.bot.send_message(chat_id = update.message.chat_id,
+                            text=text,
+                            parse_mode=ParseMode.HTML
+                            )
 
 @run_async
 def roll(update , context):
@@ -39,13 +82,15 @@ def roll(update , context):
         if update.callback_query != None:
             query = update.callback_query
             idm = query.message.chat_id
+            user_id = query.message.from_user.id
             username = re.search(r'(?<=@)\w+', query.message.text).group(0)
             message_text = re.search(
-                r'(?<=rolled:).+(?<=(\d|F))', query.message.text).group(0)
+                r'(?<=rolled:).+(?<=((\d|F))|([A,a,D,d]))', query.message.text).group(0)
             send_message = query.message.bot.send_message
             query.edit_message_text(query.message.text)
         else: 
             idm = update.message.chat_id
+            user_id = update.message.from_user.id
             username = update.message.from_user.username
             message_text = update.message.text
             send_message = update.message.bot.send_message
@@ -59,8 +104,8 @@ def roll(update , context):
         elif re.search(r'd\d\d\d\d', message):
             raise DiceException
         
-        dice_operation_list = re.findall(r'(\d*d(\d+|F))+', message)
-        re_message = re.sub(r'(\d*d(\d+|F))+', '%s', message)
+        dice_operation_list = re.findall(r'(\d*d(\d+|F)[A,a,D,d]?)+', message)
+        re_message = re.sub(r'(\d*d(\d+|F)[A,a,D,d]?)+', '%s', message)
 
         roll_list = Dice.rollList(dice_operation_list)
 
@@ -78,8 +123,11 @@ def roll(update , context):
                            )
 
         reply_markup = InlineKeyboardMarkup([[
-                        InlineKeyboardButton('Reroll' , callback_data='template'),
+                        InlineKeyboardButton('Reroll', callback_data='template'),
                         ]])
+
+        # Work with logs
+        logger.info(f"User {user_id} roll: {str(result_str)}={str(result_int)}")
 
         send_message(chat_id=idm,
                      text=text,
@@ -88,18 +136,21 @@ def roll(update , context):
                     )
 
     except LengthException:
+        logger.info(f"Length exception {user_id}")
         text = """ERROR"""
         send_message(chat_id = idm,
                      text=text,
                      parse_mode = ParseMode.HTML
                     )
     except CountException:
+        logger.info(f"Count exception {user_id}")
         text = """ERROR"""
         send_message(chat_id=idm,
                      text=text,
                      parse_mode=ParseMode.HTML
                      )
     except DiceException:
+        logger.info(f"Dice exception {user_id}")
         text = """ERROR"""
         send_message(chat_id=idm,
                      text=text,
@@ -122,7 +173,11 @@ def roll_stats(update , context):
         if sort_type in (sort_type_bymax + sort_type_bymin):
             rev = sort_type in sort_type_bymax
             stats.sort(key=lambda x: x.result_sum , reverse=rev)
-        text = '%s\n'*vrolls % tuple([f'{str(x)} : {str(x.result_sum)}' for x in stats])
+        text = f"@{update.message.from_user.username}\n"+\
+               '%s\n'*vrolls % tuple([f'{str(x)} : {str(x.result_sum)}' for x in stats])
+
+        logging.info(f"{update.message.from_user.id} roll stats {text}")
+
         update.message.bot.send_message(chat_id=idm,
                                         text=text,
                                         parse_mode=ParseMode.HTML
@@ -140,6 +195,9 @@ def roll_fate_dice(update , context):
             arg = None
         roll = Dice(adv = arg).rollFateDice(4)
         text = f'{str(roll)} = {int(roll)}'
+
+        logging.info(f"{update.message.from_user.id} roll fuadje dice {text}")
+
         update.message.bot.send_message(chat_id=idm,
                                         text=text,
                                         parse_mode=ParseMode.HTML
@@ -152,10 +210,13 @@ def error(update, context):
     logger.warning('Update "%s" caused error "%s"', update, context.error)
 
 
-def main():
+if __name__ == '__main__':
     """Run bot"""
+    logger.info("Starting bot")
     # Create Updater and pass it's your bot token
-    updater = Updater(config.TOKEN, request_kwargs = config.REQUEST_KWARGS , use_context=True)
+    updater = Updater(
+        TOKEN, request_kwargs=rk, use_context=True
+        )
 
     # Get the dispatcher to register Handlers
     dp = updater.dispatcher
@@ -163,17 +224,12 @@ def main():
     # on different command - answer on Telegram
     dp.add_handler(MessageHandler(Filters.text, roll))
     dp.add_handler(CallbackQueryHandler(roll))
-    dp.add_handler(CommandHandler(['rstats' , 'rs'], roll_stats))
-    dp.add_handler(CommandHandler('rf' , roll_fate_dice))
+    dp.add_handler(CommandHandler(['rstats', 'rs'], roll_stats))
+    dp.add_handler(CommandHandler('rf', roll_fate_dice))
     dp.add_handler(CommandHandler('start', start))
 
     # log all errors
     dp.add_error_handler(error)
 
     # Start the Bot
-    updater.start_polling()
-    updater.idle()
-
-
-if __name__ == '__main__':
-    main()
+    run(updater)
