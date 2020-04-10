@@ -220,12 +220,13 @@ if __name__ == '__main__':
     # Get the dispatcher to register Handlers
     dp = updater.dispatcher
 
-    # on different command - answer on Telegram
-    dp.add_handler(MessageHandler(Filters.text, roll))
-    dp.add_handler(CallbackQueryHandler(roll))
+    # Commands handlers
     dp.add_handler(CommandHandler(['rstats', 'rs'], roll_stats))
     dp.add_handler(CommandHandler('rf', roll_fate_dice))
     dp.add_handler(CommandHandler('start', start))
+    # Other handlers
+    dp.add_handler(MessageHandler(Filters.text, roll))
+    dp.add_handler(CallbackQueryHandler(roll))
 
     # log all errors
     dp.add_error_handler(error)
