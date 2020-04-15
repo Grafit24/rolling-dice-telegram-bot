@@ -17,12 +17,12 @@ from telegram.ext import MessageHandler
 from telegram.ext import Updater
 from telegram.ext import CallbackQueryHandler
 from telegram.ext.dispatcher import run_async
+from telegram.error import BadRequest
 
 from dice_roll import Dice
 from exceptions import LengthException
 from exceptions import CountException
 from exceptions import DiceException
-from telegram.error import BadRequest
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -77,16 +77,21 @@ def start(update, context):
 
 @run_async
 def roll(update , context):
+    num_of_str = 3
+    template = "@{username} rolled <b>{message}</b>:\n" + num_of_str*"{}"
     try:
+        # get info of user and message
         if update.callback_query != None:
             query = update.callback_query
             idm = query.message.chat_id
             user_id = query.message.from_user.id
+            # In head of last message search username
             username = re.search(r'(?<=@)\w+', query.message.text).group(0)
+            # In last message search message_roll
             message_text = re.search(
-                r'(?<=rolled:).+(?<=((\d|F))|([A,a,D,d]))', query.message.text).group(0)
+                r'(?<=rolled).+(?<=:)', query.message.text).group(0)[:-1]
             send_message = query.message.bot.send_message
-            query.edit_message_text(query.message.text)
+            query.edit_message_text(query.message.text_html, parse_mode=ParseMode.HTML)
         else: 
             idm = update.message.chat_id
             user_id = update.message.from_user.id
@@ -94,8 +99,10 @@ def roll(update , context):
             message_text = update.message.text
             send_message = update.message.bot.send_message
 
-        message = re.sub(r'( ){2,}', ' ', message_text)
+        # remove whitespase
+        message = re.sub(r'\s{2,}', ' ', message_text)
 
+        # Exception
         if len(message) > 300:
             raise LengthException
         elif re.search(r'\d\d\d\dd', message) != None:
@@ -106,55 +113,42 @@ def roll(update , context):
         dice_operation_list = re.findall(r'(\d*d(\d+|F)[A,a,D,d]?)+', message)
         re_message = re.sub(r'(\d*d(\d+|F)[A,a,D,d]?)+', '%s', message)
 
-        roll_list = Dice.rollList(dice_operation_list)
+        roll_list = Dice.rollList(dice_operation_list, crit_highlight=True)
 
         # Lists of results rolling for formating 
-        result_int = re_message % tuple([str(int(x)) for x in roll_list])
-        result_str = re_message % tuple([Dice.Cut(x) for x in roll_list])
+        result_num = re_message % tuple([str(int(x)) for x in roll_list])
+        result_rude = re_message % tuple([Dice.Cut(x) for x in roll_list])
 
-        result_int_to_text = (re.search(r'[\+,\-,\*]', re_message) != None)
-        result_str_to_text = any([x.count > 1 for x in roll_list])
+        result_num_to_text = (re.search(r'[\+,\-,\*]', re_message) != None)
+        result_rude_to_text = any([x.count > 1 for x in roll_list])
 
-        template = f'@{username} rolled: {message}\nRESULT:\n%s%s%s'
-        text = template % (4*' ' + f'{result_str}\n' if result_str_to_text else str() , 
-                           4*' ' + f'{result_int}\n' if result_int_to_text else str(), 
-                           f'<b>{round(eval(result_int))}</b>'
+        # formating text
+        return_message = template.format(
+                           ' '*4 + f'<code>{result_rude}</code>\n' \
+                               if result_rude_to_text else str(), 
+                           ' '*4 + f'{result_num}\n' \
+                               if result_num_to_text else str(), 
+                           f'Total: <b>{round(eval(result_num))}</b>',
+                           username=username,
+                           message=message,
                            )
 
         reply_markup = InlineKeyboardMarkup([[
-                        InlineKeyboardButton('Reroll', callback_data='template'),
+                        InlineKeyboardButton('Reroll', callback_data='reroll'),
                         ]])
 
         # Work with logs
-        logger.info(f"User {user_id} roll: {str(result_str)}={str(result_int)}")
+        logger.info(f"User {user_id} roll: {str(result_num)}={str(result_rude)} original m: {message}")
 
         send_message(chat_id=idm,
-                     text=text,
+                     text=return_message,
                      reply_markup = reply_markup,
                      parse_mode = ParseMode.HTML
                     )
 
     except LengthException:
-        logger.info(f"Length exception {user_id}")
-        text = """ERROR"""
-        send_message(chat_id = idm,
-                     text=text,
-                     parse_mode = ParseMode.HTML
-                    )
-    except CountException:
-        logger.info(f"Count exception {user_id}")
-        text = """ERROR"""
-        send_message(chat_id=idm,
-                     text=text,
-                     parse_mode=ParseMode.HTML
-                     )
-    except DiceException:
-        logger.info(f"Dice exception {user_id}")
-        text = """ERROR"""
-        send_message(chat_id=idm,
-                     text=text,
-                     parse_mode=ParseMode.HTML
-                     )
+        pass
+
 
 def roll_stats(update , context):
     '''Roll stats for dnd5'''

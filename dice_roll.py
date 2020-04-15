@@ -38,15 +38,15 @@ class Dice:
     Roll(count_dice: str)-> Dice
         Roll any dices by template ndn(n - nature numbers)
     
-    rollStats()-> Dice
+    rollStats()->Dice
          Roll stats for dnd5.
         (4d6 roll and remove minimal dice of it)
         Note:
             Have not consequences
     
-    rollFateDice()-> Dice
+    rollFateDice()->Dice
          Roll fudge dice.
-        (4d3 with values [+] [-] [])
+        (4d3 with values [+] [-] [ ])
     """
     count: int
     dice: int
@@ -57,8 +57,9 @@ class Dice:
     allrolls: list
     typeroll: str
 
-    def __init__(self , adv:Optional[bool] = None):
+    def __init__(self , adv:Optional[bool] = None, crit_highlight: bool = False):
         self.consequences = Consequences(obj=self , adv=adv)
+        self.crit_highlight = crit_highlight
         
 
     def Roll(self, count_dice: str)-> 'Dice':
@@ -159,7 +160,7 @@ class Dice:
         return self
     
     @staticmethod
-    def rollList(dice_operation_list: List[str])-> List['Dice']:
+    def rollList(dice_operation_list: List[str], crit_highlight: bool = False)-> List['Dice']:
         '''Roll list of dices.'''
         roll_list = list()
         for x in dice_operation_list:
@@ -172,7 +173,7 @@ class Dice:
                     int(re.search(r'\d+' , cd).group(0)))
                     )
             else:
-                roll = Dice(adv=adv).Roll(cd)
+                roll = Dice(adv=adv, crit_highlight=crit_highlight).Roll(cd)
                 roll_list.append(roll)
         return roll_list
     
@@ -227,14 +228,18 @@ class Dice:
     #     '''>='''
     #     self.result_sum >= value
 
+
     def __int__(self):
         return self.result_sum
+
 
     def __len__(self):
         return self.count
 
+
     def __contains__(self , item):
         return item in self.result
+
 
     def __str__(self):
         '''Formating obj for read
@@ -250,10 +255,27 @@ class Dice:
             [5] [<b>1</b>] [4] [2]
         '''
         # remove ' and , out of result str
-        text = re.sub(r'[\',\,]', '', str(self.result)[1:-1])
+        text = re.sub(r'[\',\,]', str(), str(self.result)[1:-1])
+        # add [] to every result
         text = re.sub(r'-?\d+', lambda x: f'[{x.group(0)}]', text)
+        # remove whitespace
+        text = re.sub(r'\s', str(), text)
 
-        if self.typeroll == 'fatedice':
+
+        if (self.typeroll == 'classic') and self.crit_highlight:
+            # highlight crit value of roll
+            max_value = self.dice
+            min_value = 1
+            # make crit value border.
+            # <code> is needed in order not to overlap <b>
+            text = re.sub(
+                f"(\[{min_value}\]|\[{max_value}\])",
+                lambda x: f"[</code><b>{x.group(0)[1:-1]}</b><code>]", 
+                text
+            )
+
+
+        elif self.typeroll == 'fatedice':
             # change the numbers to sign
             val_sign = {
                 '0': ' ',
@@ -261,6 +283,7 @@ class Dice:
                 '-1': '-',
             }
             text = re.sub(r'-?\d', lambda x: val_sign[x.group(0)], text)
+
 
         elif self.typeroll == 'stat':
             # Maked min number bolding

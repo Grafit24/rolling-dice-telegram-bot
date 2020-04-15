@@ -1,5 +1,6 @@
 .idea/
 __pycache__/
+.vscode/
 __init__.py
 config.py
 vsc_workspace.code-workspace
