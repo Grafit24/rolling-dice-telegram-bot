@@ -75,6 +75,7 @@ def start(update, context):
                             parse_mode=ParseMode.HTML
                             )
 
+
 @run_async
 def roll(update , context):
     num_of_str = 3
@@ -178,6 +179,7 @@ def roll_stats(update , context):
     except LengthException:
         pass
 
+
 def roll_fate_dice(update , context):
     setting = ('adv','a')
     try:
@@ -197,6 +199,15 @@ def roll_fate_dice(update , context):
                                         )
     except LengthException:
         pass
+
+
+def inlinequery(update, context):
+    pass
+
+
+def callbackquery(update, context):
+    query = update.inlinequery.query
+
 
 def error(update, context):
     """Log Errors caused by Updates."""
