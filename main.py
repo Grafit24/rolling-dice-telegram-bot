@@ -6,6 +6,7 @@ import logging
 import re
 import os
 import sys
+from uuid import uuid4
 
 from telegram import CallbackQuery
 from telegram import InlineKeyboardMarkup
@@ -16,8 +17,11 @@ from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import Updater
 from telegram.ext import CallbackQueryHandler
+from telegram.ext import InlineQueryHandler
 from telegram.ext.dispatcher import run_async
 from telegram.error import BadRequest
+from telegram import InlineQueryResultArticle
+from telegram import InputTextMessageContent
 
 from dice_roll import Dice
 from exceptions import LengthException
@@ -76,30 +80,81 @@ def start(update, context):
                             )
 
 
+def inlinequery(update, context):
+    query = update.inline_query
+    
+    result = [
+        InlineQueryResultArticle(
+            id=uuid4(),
+            title='roll',
+            input_message_content=InputTextMessageContent(
+                roll(
+                    idm = None,
+                    user_id = query.from_user.id,
+                    username = query.from_user.username,
+                    message_text = query.query,
+                    send_message = None,
+                    inline_mode = True,
+                ),
+                parse_mode = ParseMode.HTML
+            )
+        ),
+        InlineQueryResultArticle(
+            id=uuid4(),
+            title='roll stats',
+            input_message_content=InputTextMessageContent(
+                'some_text'
+            )
+        ),
+        InlineQueryResultArticle(
+            id=uuid4(),
+            title='roll fate dices',
+            input_message_content=InputTextMessageContent(
+                'some_text'
+            )
+        ),
+    ]
+
+    query.answer(result)
+
+
+
 @run_async
-def roll(update , context):
+def roll_handler(update, context):
+    # for rerolls 
+    if update.callback_query != None:
+        query = update.callback_query
+        # In head of last message search username
+        username = re.search(r'(?<=@)\w+', query.message.text).group(0)
+        # In last message search message_roll
+        message_text = re.search(
+            r'(?<=rolled).+(?<=:)', query.message.text).group(0)[:-1]
+        query.edit_message_text(query.message.text_html, parse_mode=ParseMode.HTML)
+        roll(
+            idm = query.message.chat_id,
+            user_id = query.message.from_user.id,
+            username = username,
+            message_text = message_text,
+            send_message = query.message.bot.send_message,
+        )
+
+
+    # for simple roll
+    else:
+        roll(
+            idm = update.message.chat_id,
+            user_id = update.message.from_user.id,
+            username = update.message.from_user.username,
+            message_text = update.message.text,
+            send_message = update.message.bot.send_message,
+        )
+
+
+def roll(inline_mode: bool = False, **kwargs):
     num_of_str = 3
     template = "@{username} rolled <b>{message}</b>:\n" + num_of_str*"{}"
+    idm, user_id, username, message_text, send_message = kwargs.values()
     try:
-        # get info of user and message
-        if update.callback_query != None:
-            query = update.callback_query
-            idm = query.message.chat_id
-            user_id = query.message.from_user.id
-            # In head of last message search username
-            username = re.search(r'(?<=@)\w+', query.message.text).group(0)
-            # In last message search message_roll
-            message_text = re.search(
-                r'(?<=rolled).+(?<=:)', query.message.text).group(0)[:-1]
-            send_message = query.message.bot.send_message
-            query.edit_message_text(query.message.text_html, parse_mode=ParseMode.HTML)
-        else: 
-            idm = update.message.chat_id
-            user_id = update.message.from_user.id
-            username = update.message.from_user.username
-            message_text = update.message.text
-            send_message = update.message.bot.send_message
-
         # remove whitespase
         message = re.sub(r'\s{2,}', ' ', message_text)
 
@@ -134,6 +189,10 @@ def roll(update , context):
                            message=message,
                            )
 
+        # inline_mode editing
+        if inline_mode:
+            return return_message
+
         reply_markup = InlineKeyboardMarkup([[
                         InlineKeyboardButton('Reroll', callback_data='reroll'),
                         ]])
@@ -143,15 +202,15 @@ def roll(update , context):
 
         send_message(chat_id=idm,
                      text=return_message,
-                     reply_markup = reply_markup,
-                     parse_mode = ParseMode.HTML
+                     reply_markup=reply_markup,
+                     parse_mode=ParseMode.HTML
                     )
 
     except LengthException:
         pass
 
 
-def roll_stats(update , context):
+def roll_stats(update, context, inline_mode=False):
     '''Roll stats for dnd5'''
     vrolls = 6
     sort_type = None
@@ -201,14 +260,6 @@ def roll_fate_dice(update , context):
         pass
 
 
-def inlinequery(update, context):
-    pass
-
-
-def callbackquery(update, context):
-    query = update.inlinequery.query
-
-
 def error(update, context):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
@@ -230,8 +281,9 @@ if __name__ == '__main__':
     dp.add_handler(CommandHandler('rf', roll_fate_dice))
     dp.add_handler(CommandHandler('start', start))
     # Other handlers
-    dp.add_handler(MessageHandler(Filters.text, roll))
-    dp.add_handler(CallbackQueryHandler(roll))
+    dp.add_handler(MessageHandler(Filters.text, roll_handler))
+    dp.add_handler(CallbackQueryHandler(roll_handler))
+    dp.add_handler(InlineQueryHandler(inlinequery))
 
     # log all errors
     dp.add_error_handler(error)
