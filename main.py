@@ -22,6 +22,7 @@ from telegram.ext.dispatcher import run_async
 from telegram.error import BadRequest
 from telegram import InlineQueryResultArticle
 from telegram import InputTextMessageContent
+from telegram import Chat
 
 from dice_roll import Dice
 from exceptions import LengthException
@@ -81,42 +82,9 @@ def start(update, context):
 
 
 def inlinequery(update, context):
-    query = update.inline_query
-    
-    result = [
-        InlineQueryResultArticle(
-            id=uuid4(),
-            title='roll',
-            input_message_content=InputTextMessageContent(
-                roll(
-                    idm = None,
-                    user_id = query.from_user.id,
-                    username = query.from_user.username,
-                    message_text = query.query,
-                    send_message = None,
-                    inline_mode = True,
-                ),
-                parse_mode = ParseMode.HTML
-            )
-        ),
-        InlineQueryResultArticle(
-            id=uuid4(),
-            title='roll stats',
-            input_message_content=InputTextMessageContent(
-                'some_text'
-            )
-        ),
-        InlineQueryResultArticle(
-            id=uuid4(),
-            title='roll fate dices',
-            input_message_content=InputTextMessageContent(
-                'some_text'
-            )
-        ),
-    ]
-
-    query.answer(result)
-
+    #query = update.inline_mode
+    #query.answer(result)
+    pass
 
 
 @run_async
@@ -151,9 +119,12 @@ def roll_handler(update, context):
 
 
 def roll(inline_mode: bool = False, **kwargs):
+    # Start set
     num_of_str = 3
-    template = "@{username} rolled <b>{message}</b>:\n" + num_of_str*"{}"
+    template_group = "@{username} rolled <b>{message}</b>:\n" + num_of_str*"{}"
+    template_private = "<b>{message}</b>:" + num_of_str*"{}"
     idm, user_id, username, message_text, send_message = kwargs.values()
+
     try:
         # remove whitespase
         message = re.sub(r'\s{2,}', ' ', message_text)
@@ -179,19 +150,15 @@ def roll(inline_mode: bool = False, **kwargs):
         result_rude_to_text = any([x.count > 1 for x in roll_list])
 
         # formating text
-        return_message = template.format(
-                           ' '*4 + f'<code>{result_rude}</code>\n' \
-                               if result_rude_to_text else str(), 
-                           ' '*4 + f'{result_num}\n' \
-                               if result_num_to_text else str(), 
-                           f'Total: <b>{round(eval(result_num))}</b>',
-                           username=username,
-                           message=message,
-                           )
-
-        # inline_mode editing
-        if inline_mode:
-            return return_message
+        return_message = template_private.format(
+                        ' '*4 + f'<code>{result_rude}</code>\n' \
+                                if result_rude_to_text else str(), 
+                        ' '*4 + f'{result_num}\n' \
+                            if result_num_to_text else str(), 
+                        f'Total: <b>{round(eval(result_num))}</b>',
+                        username=username,
+                        message=message,
+                        )
 
         reply_markup = InlineKeyboardMarkup([[
                         InlineKeyboardButton('Reroll', callback_data='reroll'),
@@ -218,9 +185,15 @@ def roll_stats(update, context, inline_mode=False):
     sort_type_bymin = ('min', 'bymin', 'l',)
     try:
         idm = update.message.chat_id
-        if context.args != list():
-            sort_type, vrolls = context.args 
-            vrolls = int(vrolls)
+        message = re.split(r'\s', update.message.text)
+        if message != ['/rs']:
+            message = message[1:]
+            for i in message:
+                if i in sort_type_bymax + sort_type_bymin:
+                    sort_type = i
+                else:
+                    vrolls = int(i)
+                    
 
         stats = [Dice().rollStats() for x in range(vrolls)]
         if sort_type in (sort_type_bymax + sort_type_bymin):
@@ -239,16 +212,55 @@ def roll_stats(update, context, inline_mode=False):
         pass
 
 
-def roll_fate_dice(update , context):
-    setting = ('adv','a')
+def roll_fate_dice(update , context, inline_mode=False):
+    setting = ('adv','a','d','disadv')
+    template = '{visual}{bonus} = {total}'
     try:
+        # type message check
         idm = update.message.chat_id
-        if context.args != list():
-            arg = True if (context.args[0] in setting[1]) else False 
+        message = re.split(r'\s', update.message.text)
+        is_group = update.message.chat.type == 'group'
+
+        # get setting roll by user       
+        if message != ['/rf']:
+            # exclude '/rf'
+            message = message[1:]
+            with_bonus = False
+            with_adv = False
+            for i in message:
+                if i in setting:
+                    arg = i
+                    with_adv = True
+                else:
+                    bonus = int(i)
+                    with_bonus = True
+
+                if not with_adv:
+                    arg = None
+                if not with_bonus:
+                    bonus = 0
         else:
             arg = None
+            bonus = 0
+
         roll = Dice(adv = arg).rollFateDice(4)
-        text = f'{str(roll)} = {int(roll)}'
+
+        # formating
+        if bonus < 0:
+            bonus_text = str(bonus)
+        elif bonus == 0:
+            bonus_text=''
+        else:
+            bonus_text = f'+{bonus}'
+
+        if is_group:
+            template = f'@{update.message.from_user.username}\n'+template
+
+        text = template.format(
+            bonus=bonus_text,
+            visual=str(roll),
+            total=int(roll)+bonus,
+        )
 
         logging.info(f"{update.message.from_user.id} roll fuadje dice {text}")
 
