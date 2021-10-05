@@ -1,358 +1,312 @@
 """Dice roller"""
-from typing import List , Optional , Union
+from abc import ABCMeta
+from typing import List , Optional , Union, Tuple, ValuesView
 import random
 import re
 
 
-class Dice:
-    """Roll any dice and stores data about it.
+class GenericDice():
+    """Base class for every dice roll."""
 
-    Attributes
-    ----------
-    count: int
-        The count of dice roll.
-            =None if it's typeroll is stat
-    dice: int
-        The number of faces dices 
-        -typeroll=stat-
-            =None 
-    result: tuple
-        Result of rolling
-        -typeroll=stat-
-            list is full so include in minimal value
-            (Which not included in result_sum)
-    result_sum: int
-        Sum of result
-        -typeroll=stat-
-            except minimal value of result
-    ---Optinal---
-    consequences: Consequences(obj , adv)
-        For anything doubleroll(Example: roll with advantage/disadvantage)
-    allrolls: list
-        List with 2(Always) throw, include in result inappropriate consequences.
-    typeroll: str
-        Name type of dice or special roll 
+    def __init__(self, count, dice) -> None:
+        self.count = count
+        self.dice = dice
+        self._n_rerolls = 0
+        self._results = self._roll()
+        self._numeric = sum(self._results)
 
-    Methods
-    -------
-    Roll(count_dice: str)-> Dice
-        Roll any dices by template ndn(n - nature numbers)
-    
-    rollStats()->Dice
-         Roll stats for dnd5.
-        (4d6 roll and remove minimal dice of it)
-        Note:
-            Have not consequences
-    
-    rollFateDice()->Dice
-         Roll fudge dice.
-        (4d3 with values [+] [-] [ ])
-    """
-    count: int
-    dice: int
-    result: tuple
-    result_sum: int
-    #Optional
-    consequences: 'Consequences'
-    allrolls: list
-    typeroll: str
+    # Properties
+    @property
+    def count(self):
+        return self._count
 
-    def __init__(self , adv:Optional[bool] = None, crit_highlight: bool = False):
-        self.consequences = Consequences(obj=self , adv=adv)
-        self.crit_highlight = crit_highlight
-        
+    @count.setter
+    def count(self, value):
+        if is_natural_number(value):
+            self._count = value
+        else:
+            raise ValueError(
+                "Argument <count> must be positive integer value.")
+            
+    @property
+    def dice(self):
+        return self._dice
 
-    def Roll(self, count_dice: str)-> 'Dice':
-        """Roll any dice by template(ndn ,  n - natural number).
-        Can rolling dice with consequences
+    @dice.setter
+    def dice(self, value):
+        if is_natural_number(value):
+            self._dice = value
+        else:
+            raise ValueError(
+                "Argument <dice> must be positive integer value.")
 
-        Parameters
-        ----------
-        count_dice: str
-            template is ndn , n - nature number.
+    @property
+    def results(self):
+        return self._results
+
+    @property
+    def n_rerolls(self):
+        return self._n_rerolls
+
+    @property
+    def numeric(self):
+        return self._numeric
+
+    # Methods
+    def _roll(self)-> Tuple[int]:
+        """Roll dice with <dice> edges <count> times."""
+        rolls = [random.randint(1 , self.dice) for _ in range(self.count)]
+        return tuple(rolls)
+
+    def reroll(self)-> None:
+        """Reroll current dices"""
+        self._n_rerolls += 1
+        self._results = self._roll()
+        self._numeric = sum(self._results)
+
+    @staticmethod
+    def roll_list(roll_list: List[tuple])-> List["GenericDice"]:
+        """Бросает дайсы из списка возвращая список брошенных кубов.
+        :roll_list: List[Tiple[int]]
+            List containing tuples of view (count_dices, dice)
+
+        :return:
+            List of BaseDice objects
         """
 
-        # mult = 2 if throw with adv/disadv
-        mult = 2 if self.consequences!=None else 1
-
-        # unpack data 
-        count_roll, dice = count_dice.split('d')
-        count_roll = int(count_roll)
-        if dice != 'F':
-            dice = int(dice)
-        else:
-            return self.rollFateDice(count_roll)
-
-        allrolls = []
-        for rolls in range(mult):
-            rolls = [random.randint(1 , dice) for roll in range(count_roll)]
-            allrolls.append(rolls.copy())
-
-        # Make adv/disadv/base
-        self.allrolls = tuple(allrolls)
-        index = self.consequences.result()
-
-        self.count = count_roll
-        self.dice = dice
-        self.result = tuple(allrolls[index])
-        self.result_sum = sum(allrolls[index])
-        self.typeroll = 'classic'
-
-        return self
-
-
-    def rollStats(self)-> 'Dice':
-        '''Roll simple stats of dnd5.
-        (4d6 roll and remove minimal dice of it)
-        
-        result = len(list = 4)
-        result_sum = sum(len(list) = 3)
-
-        Example
-        -------
-        4d6 -> [4 , 5 , 2 , 1] - min -> [4 , 5 , 2] = 11
-        4d6 -> [1 , 1 , 1 , 1] - min -> [1 , 1 , 1] = 3
-        '''
-        self.consequences = Consequences(self , adv=None)
-        self.Roll('4d6')
-        roll = list(self.result)
-        # extract min value
-        min_r = min(roll)
-        roll.remove(min_r)
-
-        self.count = None
-        self.dice = None
-        self.result_sum = sum(roll)
-        self.typeroll = 'stat'
-        self.allrolls = None
-
-        return self
-
-
-    def rollFateDice(self , dices=1)-> 'Dice':
-        '''Roll fudge dice.(4d3 with values [+] [-] [])
-        '''
-        # mult = 2 if throw with adv/disadv
-        mult = 2 if self.consequences!=None else 1
-        values = (1, 
-                 0, 
-                 -1,
-                )
-
-        allrolls = []
-        for rolls in range(mult):
-            rolls = [
-                values[int(Dice().Roll('1d3')) - 1] for roll in range(dices)
-                ]
-            allrolls.append(rolls)
-
-        # Make adv/disadv/base
-        self.allrolls = tuple(allrolls)
-        index = self.consequences.result()
-
-        self.count = 4
-        self.dice = 'F'
-        self.result = tuple(allrolls[index])
-        self.result_sum = sum(allrolls[index])
-        self.allrolls = allrolls
-        self.typeroll = 'fatedice'
-
-        return self
+        results = []
+        for count, dice in roll_list:
+            dice = GenericDice(count, dice)
+            results.append(dice)
+        return results
     
-    @staticmethod
-    def rollList(dice_operation_list: List[str], crit_highlight: bool = False)-> List['Dice']:
-        '''Roll list of dices.'''
-        roll_list = list()
-        for x in dice_operation_list:
-            sign = x[0][-1]
-            adv = sign in ('A', 'a') \
-                if sign in ('A', 'a', 'D', 'd') else None
-            cd = x[0] if adv == None else x[0][:-1]
-            if 'F' in x:
-                roll_list.append(Dice(adv=adv).rollFateDice(
-                    int(re.search(r'\d+' , cd).group(0)))
-                    )
-            else:
-                roll = Dice(adv=adv, crit_highlight=crit_highlight).Roll(cd)
-                roll_list.append(roll)
-        return roll_list
-    
-    @staticmethod
-    def Cut(rd: 'Dice'):
-        text = str(rd)
-        start = re.search(r'^\[\d+\]', text)
-        end = re.search(r'\[\d+\]$', text)
-        text = f'{start.group(0)}...{end.group(0)}' if (rd.count >= 500)\
-             and (start != None)\
-             and (end != None)\
-            else text
-        return text
-
     def __add__(self , value):
         '''+'''
-        return self.result_sum + value
+        if isinstance(value, __class__):
+            value = value.numeric
+        return self.numeric + value
+
+    def __radd__(self , value):
+        '''+'''
+        if isinstance(value, __class__):
+            value = value.numeric
+        return self.numeric + value
 
     def __sub__(self, value):
         '''-'''
-        return self.result_sum - value
+        if isinstance(value, __class__):
+            value = value.numeric
+        return self.numeric - value
+
+    def __rsub__(self, value):
+        '''-'''
+        if isinstance(value, __class__):
+            value = value.numeric
+        return value - self.numeric
 
     def __mul__(self, value):
         '''*'''
-        return self.result_sum * value
+        if isinstance(value, __class__):
+            value = value.numeric
+        return self.numeric * value
+
+    def __rmul__(self, value):
+        '''*'''
+        if isinstance(value, __class__):
+            value = value.numeric
+        return self.numeric * value
+
+    def __truediv__(self, value):
+        '''<self>/<value>'''
+        if isinstance(value, __class__):
+            value = value.numeric
+        return self.numeric / value
+
+    def __rtruediv__(self, value):
+        '''<value>/<self>'''
+        if isinstance(value, __class__):
+            value = value.numeric
+        return value / self.numeric
+
+
+class DND5Dice(GenericDice):
+    @property
+    def dice(self):
+        return self._dice
+
+    @dice.setter
+    def dice(self, value):
+        cond_base = is_natural_number(value)
+        cond_dnd = value in [2, 4, 6, 8, 10, 12, 20, 30, 100]
+        if cond_dnd and cond_base:
+            self._dice = value
+        else:
+            message = """Argument <dice> must be positive
+            integer value of dnd5 types.
+            [d2, d4, d6, d8, d10, d12, d20, d100]""".replace("\n", " ")
+            raise ValueError(message)
+
+    @staticmethod
+    def roll_list(roll_list: List[tuple])-> List["DND5Dice"]:
+        # TODO Переписать на англйском
+        """Бросает дайсы из списка возвращая список брошенных кубов.
+        :roll_list: List[Tiple[int]]
+            List containing tuples of view (count_dices, dice)
+
+        :return:
+            List of BaseDice objects
+        """
+        results = []
+        for count, dice in roll_list:
+            dice = DND5Dice(count, dice)
+            results.append(dice)
+        return results
+
+    @staticmethod
+    def roll_stats(n_stats: int=6)-> Tuple[Tuple[list, int]]:
+        # TODO Переписать на англимйском
+        """Генерирует значения для статок в ДНД5.
+        Алгоритм описанный в книги:
+            1. Бросается d6 4 раза (=<Полный бросок>)
+            2. Откидывается наименьшее значение
+            3. Сумма значений оставшихся кубов
+            и есть <Итоговое значение> для статки.
+
+        :n_stats:
+            количество статок для которых будет сгенерированно значение.
+        
+        :return:
+            Возвращает кортеж содержащий DND5Dice 
+            с измённёным numeric в соответвие с алгоритмом.
+        """
+        result_stats = []
+        for _ in range(n_stats):
+            roll = DND5Dice(4, 6)
+            completed_result = list(roll.results)
+            completed_result.remove(min(completed_result))
+            roll._numeric = sum(completed_result)
+            result_stats.append(roll)
+
+        return tuple(result_stats)
+
+
+class FudgeDice(GenericDice):
+    def __init__(self, count) -> None:
+        self.count = count
+        self._n_rerolls = 0
+        self._results = self._roll_fudge()
+        self._numeric = sum(self._results)
+
+    def _roll_fudge(self) -> Tuple[int]:
+        results = GenericDice(self.count, 3).results
+        return tuple([res-2 for res in results])
+
+    @staticmethod
+    def roll_list(roll_list: List[int])-> List["FudgeDice"]:
+        # TODO Переписать на англйском
+        """Бросает дайсы из списка возвращая список брошенных кубов.
+        :roll_list: List[Tiple[int]]
+            List containing tuples of view (count_dices, dice)
+
+        :return:
+            List of BaseDice objects
+        """
+        results = []
+        for count in roll_list:
+            dice = FudgeDice(count)
+            results.append(dice)
+        return results
+
+
+class CustomDice(GenericDice):
+    def __init__(self, count, dice, dmap) -> None:
+        super().__init__(count, dice)
+        self.dmap = dmap
+        self._results = [self.dmap[res] for res in self.results]
+        self._numeric = None
+
+    @property
+    def numeric(self):
+        return None
+
+    @property
+    def dmap(self):
+        return self._dmap
+
+    @dmap.setter
+    def dmap(self, value):
+        if not isinstance(value, dict):
+            raise ValueError("<map> must be dict object.")
+        elif not all([key in range(1, self.dice+1) for key in value.keys()]):
+            raise ValueError("<map> incorrect form.")
+        self._dmap = value
+
+    def _roll_custom(self) -> Tuple[int]:
+        result = super()._roll()
+        return tuple([self.dmap[res] for res in result])
+
+    def reroll(self) -> None:
+        super().reroll()
+        self._results = [self.dmap[res] for res in self.results]
+
+    @staticmethod
+    def roll_list(roll_list: List[tuple])-> List["CustomDice"]:
+        # TODO Переписать на англйском
+        """Бросает дайсы из списка возвращая список брошенных кубов.
+        :roll_list: List[Tiple[int]]
+            List containing tuples of view (count_dices, dice)
+
+        :return:
+            List of BaseDice objects
+        """
+        results = []
+        for count, dice, dmap in roll_list:
+            dice = CustomDice(count, dice, dmap)
+            results.append(dice)
+        return results
+
+    def __add__(self , value):
+        '''+'''
+        raise SyntaxError("Operation + is not avaliable for this object")
+
+    def __radd__(self , value):
+        '''+'''
+        raise SyntaxError("Operation + is not avaliable for this object")
+
+    def __sub__(self, value):
+        '''-'''
+        raise SyntaxError("Operation - is not avaliable for this object")
+
+    def __rsub__(self, value):
+        '''-'''
+        raise SyntaxError("Operation - is not avaliable for this object")
+
+    def __mul__(self, value):
+        '''*'''
+        raise SyntaxError("Operation * is not avaliable for this object")
+    
+    def __rmul__(self, value):
+        '''*'''
+        raise SyntaxError("Operation * is not avaliable for this object")
 
     def __truediv__(self, value):
         '''/'''
-        return self.result_sum / value
+        raise SyntaxError("Operation / is not avaliable for this object")
 
-    # def __lt__(self, value):
-    #     '''<'''
-    #     return self.result_sum < value
+    def __rtruediv__(self, value):
+        '''/'''
+        raise SyntaxError("Operation / is not avaliable for this object")
+        
 
-    # def __le__(self, value):
-    #     '''<='''
-    #     self.result_sum <= value
+def is_natural_number(value):
+    cond1 = value > 0
+    cond2 = value.__class__ == int
+    return cond1 and cond2
 
-    # def __eq__(self, value):
-    #     '''=='''
-    #     self.result_sum == value
-
-    # def __ne__(self, value):
-    #     '''!='''
-    #     self.result_sum != value
-
-    # def __gt__(self, value):
-    #     '''>'''
-    #     self.result_sum > value
-
-    # def __ge__(self, value):
-    #     '''>='''
-    #     self.result_sum >= value
-
-
-    def __int__(self):
-        return self.result_sum
-
-
-    def __len__(self):
-        return self.count
-
-
-    def __contains__(self , item):
-        return item in self.result
-
-
-    def __str__(self):
-        '''Formating obj for read
-
-        Examples
-        --------
-        classic
-            5d20
-            [10] [20] [1] [12] [6]
-        fatedice
-            [+] [ ] [-] [ ]
-        stat
-            [5] [<b>1</b>] [4] [2]
-        '''
-        # remove ' and , out of result str
-        text = re.sub(r'[\',\,]', str(), str(self.result)[1:-1])
-        # add [] to every result
-        text = re.sub(r'-?\d+', lambda x: f'[{x.group(0)}]', text)
-        # remove whitespace
-        text = re.sub(r'\s', str(), text)
-
-
-        if (self.typeroll == 'classic') and self.crit_highlight:
-            # highlight crit value of roll
-            max_value = self.dice
-            min_value = 1
-            # make crit value border.
-            # <code> is needed in order not to overlap <b>
-            text = re.sub(
-                f"(\[{min_value}\]|\[{max_value}\])",
-                lambda x: f"[</code><b>{x.group(0)[1:-1]}</b><code>]", 
-                text
-            )
-
-
-        elif self.typeroll == 'fatedice':
-            # change the numbers to sign
-            val_sign = {
-                '0': ' ',
-                '1': '+',
-                '-1': '-',
-            }
-            text = re.sub(r'-?\d', lambda x: val_sign[x.group(0)], text)
-
-
-        elif self.typeroll == 'stat':
-            # Maked min number bolding
-            min_num = min(self.result)
-            text = re.sub(
-                f'\[{min_num}\]',
-                lambda x: f'<s>{x.group(0)}</s>',
-                text,
-                count=1,
-            )
-
-        return text
-
-
-class Consequences:
-    '''Type for adv/dadv/without
-
-    Attributes
-    ----------
-    adv: bool , None
-        True - with advantage
-        False - with disadvantage
-        None - without
-    obj: Dice
-        Object with data about rolls
-    
-    Methods
-    -------
-    result()-> int
-        Set index result by advantage/disadvantage
-        and return it. 
-    '''
-    adv: Union[bool , None]
-    obj: 'Dice'
-
-    def __init__(self , obj , adv=None):
-        self.adv = adv
-        self.obj = obj
-    
-
-    def __eq__(self, value):
-        '''=='''
-        if self.adv == value: return True
-        else: return False
-
-
-    def __ne__(self, value):
-        '''!='''
-        if self.adv != value: return True
-        else: return False
-
-
-    def __bool__(self):
-        return self.adv
-
-
-    def result(self)-> int:
-        '''Set index result by advantage/disadvantage
-        and return it. Function use for find in allrolls 
-        max(adv)/min(disadv)/None(without)
-
-        Returns
-        -------
-        index: int
-            allrolls[index] = result
-        '''
-        if self.adv == None:
-            return 0
-        prior = max if self.adv else min
-        arsum = [sum(x)for x in self.obj.allrolls]
-        index = arsum.index(prior(arsum))
-        return index
+if __name__ == "__main__":
+    data = [
+        (1, 2, {1:"один", 2:"два"}),
+        (2, 3, {1:"один", 2:"два", 3:"три"})
+    ]
+    for r in CustomDice.roll_list(data):
+        print(r.results)
