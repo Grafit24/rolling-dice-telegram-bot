@@ -205,7 +205,7 @@ class CustomDiceTest(unittest.TestCase):
 
         for test in false_tests:
             with self.assertRaises(ValueError,
-            msg=f"ValueError not raised : args={test}"):
+                msg=f"ValueError not raised : args={test}"):
                 CustomDice(*test)
 
         with self.assertRaises(ValueError):

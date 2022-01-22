@@ -73,7 +73,6 @@ class GenericDice():
         :return:
             List of BaseDice objects
         """
-
         results = []
         for count, dice in roll_list:
             dice = GenericDice(count, dice)
@@ -205,7 +204,7 @@ class FudgeDice(GenericDice):
     def roll_list(roll_list: List[int])-> List["FudgeDice"]:
         # TODO Переписать на англйском
         """Бросает дайсы из списка возвращая список брошенных кубов.
-        :roll_list: List[Tiple[int]]
+        :roll_list: List[Tuple[int]]
             List containing tuples of view (count_dices, dice)
 
         :return:
@@ -302,11 +301,3 @@ def is_natural_number(value):
     cond1 = value > 0
     cond2 = value.__class__ == int
     return cond1 and cond2
-
-if __name__ == "__main__":
-    data = [
-        (1, 2, {1:"один", 2:"два"}),
-        (2, 3, {1:"один", 2:"два", 3:"три"})
-    ]
-    for r in CustomDice.roll_list(data):
-        print(r.results)
