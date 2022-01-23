@@ -20,6 +20,7 @@ from telegram.ext import InlineQueryHandler
 from telegram.ext.dispatcher import run_async
 
 from dice_roll import *
+from message_parse import *
 from exceptions import LengthException
 from exceptions import CountException
 from exceptions import DiceException
@@ -67,23 +68,12 @@ def start(update, context):
 
 
 def roll_genericdice(update, context):
-    message = re.sub(r'\s+', ' ', update.message.text).strip()
-    dice_operation = re.findall(r'((\d*)d(\d+))+', message)
-    message_template = re.sub(r'(\d*d\d+)+', '%s', message)
-    # rolling
-    dices = []
-    for _, count, dim in dice_operation:
-        count = int(count) if count != "" else 1
-        dim = int(dim)
-        dices.append((count, dim))
+    template = "{result} {sep} {details}"
+    details = Details(crit=True)
+    parser = GenericDiceParser(template, details_parser=details)
+    dices = parser.parse_input(update.message.text)
     result = GenericDice.roll_list(dices)
-    # send back
-    numeric_result = [res.numeric for res in result]
-    message_template %= tuple(map(str, numeric_result))
-    if len(result) > 1:
-        return_message = "%d : %s" % (sum(numeric_result), message_template)
-    else:
-        return_message = sum(numeric_result)
+    return_message = parser.pasrse_output(result, verbosity=2)
     update.message.bot.send_message(
         chat_id = update.message.chat_id,
         text=return_message,
@@ -285,9 +275,7 @@ if __name__ == '__main__':
     """Run bot"""
     logger.info("Starting bot")
     # Create Updater and pass it's your bot token
-    updater = Updater(
-        TOKEN, use_context=True
-        )
+    updater = Updater(TOKEN, use_context=True)
 
     # Get the dispatcher to register Handlers
     dp = updater.dispatcher
