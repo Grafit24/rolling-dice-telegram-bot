@@ -11,11 +11,16 @@ class GenericDice():
     def __init__(self, count, dice) -> None:
         self.count = count
         self.dice = dice
+        self._min_value = 1
         self._n_rerolls = 0
         self._results = self._roll()
         self._numeric = sum(self._results)
 
     # Properties
+    @property
+    def min_value(self):
+        return self._min_value
+
     @property
     def count(self):
         return self._count
@@ -221,6 +226,7 @@ class CustomDice(GenericDice):
     def __init__(self, count, dice, dmap) -> None:
         super().__init__(count, dice)
         self.dmap = dmap
+        self._min_value = dmap.get(1)
         self._results = [self.dmap[res] for res in self.results]
         self._numeric = None
 
@@ -238,6 +244,8 @@ class CustomDice(GenericDice):
             raise ValueError("<map> must be dict object.")
         elif not all([key in range(1, self.dice+1) for key in value.keys()]):
             raise ValueError("<map> incorrect form.")
+        elif self.dice != len(value):
+            raise ValueError("<map> is not full.")
         self._dmap = value
 
     def _roll_custom(self) -> Tuple[int]:

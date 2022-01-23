@@ -13,7 +13,7 @@ class Details:
         result = ""
         for value in dice.results:
             # TODO min value for custom
-            if (value == dice.dice) or (value == 1) and self.crit:
+            if (value == dice.dice) or (value == dice.min_value) and self.crit:
                 html_open, html_close = self.html_highlight
             else:
                 html_open = html_close = ""
