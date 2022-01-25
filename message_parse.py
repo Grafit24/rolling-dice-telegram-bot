@@ -1,6 +1,10 @@
 import os
 import re
 
+from telegram import message
+
+from dice_roll import DND5Dice
+
 class Details:
     def __init__(self, brackets=("[", "]"), crit=True, space=" ", html_highlight=("<b>", "</b>")) -> None:
         self.template = "{open}{html_open}{value}{html_close}{close}{space}"
@@ -64,3 +68,54 @@ class GenericDiceParser:
         return message
 
         
+class DND5RollsParser:
+    def __init__(self, message_template, sep="=", details_parser=Details()):
+        self.message_template = message_template
+        self.details_parser = details_parser
+        self.sep = sep
+
+    # TODO make more hard parsing (/rN +6 = 1dN + 6 не 6dN)
+    def parse_input(self, input_message):
+        message = re.sub(r'\s+', ' ', input_message).strip()
+        args = message.split()[1:]
+        self.test_args(args)
+        self.len_args = len(args)
+        count = int(args[0]) if len(args) >= 1 else 1
+        self.add = int(args[1]) if len(args) > 1 else 0
+        return count
+
+    def pasrse_output(self, result_dice, verbosity):
+        result = result_dice.numeric + self.add
+        if (verbosity > 0) and (self.len_args):
+            if self.add != 0:
+                sign = "+" if self.add > 0 else "-"
+                additional = f"{sign} {abs(self.add)}"
+            else:
+                additional = ""
+
+            if verbosity == 1:
+                details = f"{result_dice.numeric} {additional}"
+            elif verbosity > 1:
+                details = f"{self.details_parser.get(result_dice)} {additional}"
+
+            message = self.message_template.format(
+                result=result, sep=self.sep, 
+                details=details
+                )
+        else:
+            message = self.message_template.format(
+                result=result, sep="", 
+                details=""
+                )
+        return message
+
+    def test_args(self, args):
+        if len(args) > 2:
+            raise ValueError("Too many arguments!")
+        try:
+            [int(arg) for arg in args]
+        except ValueError:
+            raise ValueError("Incorrect arguments!")
+        
+        if (len(args) > 0) and (int(args[0]) < 0):
+            raise ValueError("Incorrect count(<0)")

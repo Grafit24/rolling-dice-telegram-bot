@@ -8,7 +8,7 @@ import os
 import sys
 import configparser
 
-from telegram import InlineKeyboardMarkup
+from telegram import InlineKeyboardMarkup, message
 from telegram import InlineKeyboardButton
 from telegram import ParseMode
 from telegram.ext import CommandHandler
@@ -59,7 +59,7 @@ else:
 
 def start(update, context):
     logger.info(f"User {update.message.from_user.id} start/restart using bot!")
-    text = config["messages.start"]["text"]
+    text = config["messages.start"].get("text")
     update.message.bot.send_message(
         chat_id = update.message.chat_id,
         text=text,
@@ -68,17 +68,39 @@ def start(update, context):
 
 
 def roll_genericdice(update, context):
-    template = "{result} {sep} {details}"
-    details = Details(crit=True)
+    conf = config["messages.roll_genericdice"]
+    template = conf.get("template")
+    details = Details(crit=conf.getboolean("crit"))
     parser = GenericDiceParser(template, details_parser=details)
     dices = parser.parse_input(update.message.text)
     result = GenericDice.roll_list(dices)
-    return_message = parser.pasrse_output(result, verbosity=2)
+    return_message = parser.pasrse_output(
+        result, verbosity=conf.getint("verbosity"))
     update.message.bot.send_message(
         chat_id = update.message.chat_id,
         text=return_message,
         parse_mode=ParseMode.HTML
         )
+
+
+def roll_dnd5_generator(dice):
+    def roll_dnd5(update, context):
+        conf = config["messages.roll_dnd5"]
+        template = conf.get("template")
+        details = Details(crit=conf.getboolean("crit"))
+        parser = DND5RollsParser(template, details_parser=details)
+        count = parser.parse_input(update.message.text)
+        result_dice = DND5Dice(count, dice)
+        return_message = parser.pasrse_output(
+            result_dice,
+            verbosity=conf.getint("verbosity")
+        )
+        update.message.bot.send_message(
+            chat_id = update.message.chat_id,
+            text=return_message,
+            parse_mode=ParseMode.HTML
+            )
+    return roll_dnd5
 
 
 # @run_async
@@ -282,6 +304,8 @@ if __name__ == '__main__':
 
     # Commands handlers
     dp.add_handler(CommandHandler('start', start))
+    for dice in [2, 4, 6, 8, 10, 12, 20, 100]:
+        dp.add_handler(CommandHandler(f"r{dice}", roll_dnd5_generator(dice)))
     dp.add_handler(MessageHandler(Filters.text, roll_genericdice, run_async=True))
     # dp.add_handler(CommandHandler(['rstats', 'rs'], roll_stats))
     # dp.add_handler(CommandHandler('rf', roll_fate_dice))
