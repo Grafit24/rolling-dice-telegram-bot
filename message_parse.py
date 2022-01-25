@@ -1,9 +1,7 @@
 import os
 import re
 
-from telegram import message
-
-from dice_roll import DND5Dice
+from abc import ABC, abstractmethod
 
 class Details:
     def __init__(self, brackets=("[", "]"), crit=True, space=" ", html_highlight=("<b>", "</b>")) -> None:
@@ -29,12 +27,23 @@ class Details:
         return result
                 
 
-class GenericDiceParser:
-    def __init__(self, message_template, sep=":", details_parser=Details()) -> None:
+class DiceParser(ABC):
+
+    def __init__(self, message_template, sep, details_parser) -> None:
         self.message_template = message_template
         self.sep = sep
         self.details_parser = details_parser
 
+    @abstractmethod
+    def parse_input(self, input_message):
+        pass
+
+    @abstractmethod
+    def parse_output(self, result, verbosity):
+        pass 
+
+
+class GenericDiceParser(DiceParser):
     def parse_input(self, input_message):
         message = re.sub(r'\s+', ' ', input_message).strip()
         dice_operation = re.findall(r'((\d*)d(\d+))+', message)
@@ -46,7 +55,7 @@ class GenericDiceParser:
             self.dices.append((count, dim))
         return self.dices
 
-    def pasrse_output(self, result_dices, verbosity):
+    def parse_output(self, result_dices, verbosity):
         if verbosity == 1:
             details_dices = [str(dice.numeric) for dice in result_dices]
         elif verbosity == 2:
@@ -68,11 +77,7 @@ class GenericDiceParser:
         return message
 
         
-class DND5RollsParser:
-    def __init__(self, message_template, sep="=", details_parser=Details()):
-        self.message_template = message_template
-        self.details_parser = details_parser
-        self.sep = sep
+class DND5RollsParser(DiceParser):
 
     # TODO make more hard parsing (/rN +6 = 1dN + 6 не 6dN)
     def parse_input(self, input_message):
@@ -84,7 +89,7 @@ class DND5RollsParser:
         self.add = int(args[1]) if len(args) > 1 else 0
         return count
 
-    def pasrse_output(self, result_dice, verbosity):
+    def parse_output(self, result_dice, verbosity):
         result = result_dice.numeric + self.add
         if (verbosity > 0) and (self.len_args):
             if self.add != 0:
@@ -119,3 +124,12 @@ class DND5RollsParser:
         
         if (len(args) > 0) and (int(args[0]) < 0):
             raise ValueError("Incorrect count(<0)")
+
+
+class DND5StatsParser(DiceParser):
+
+    def parse_input(self, input_message):
+        pass
+
+    def parse_output(self, result, verbosity):
+        return

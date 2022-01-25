@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """All server work with telegram-bot"""
 
+from ast import parse
 import logging
 import re
 import os
@@ -71,10 +72,10 @@ def roll_genericdice(update, context):
     conf = config["messages.roll_genericdice"]
     template = conf.get("template")
     details = Details(crit=conf.getboolean("crit"))
-    parser = GenericDiceParser(template, details_parser=details)
+    parser = GenericDiceParser(template, ":", details_parser=details)
     dices = parser.parse_input(update.message.text)
     result = GenericDice.roll_list(dices)
-    return_message = parser.pasrse_output(
+    return_message = parser.parse_output(
         result, verbosity=conf.getint("verbosity"))
     update.message.bot.send_message(
         chat_id = update.message.chat_id,
@@ -88,10 +89,10 @@ def roll_dnd5_generator(dice):
         conf = config["messages.roll_dnd5"]
         template = conf.get("template")
         details = Details(crit=conf.getboolean("crit"))
-        parser = DND5RollsParser(template, details_parser=details)
+        parser = DND5RollsParser(template, "=", details_parser=details)
         count = parser.parse_input(update.message.text)
         result_dice = DND5Dice(count, dice)
-        return_message = parser.pasrse_output(
+        return_message = parser.parse_output(
             result_dice,
             verbosity=conf.getint("verbosity")
         )
@@ -102,6 +103,12 @@ def roll_dnd5_generator(dice):
             )
     return roll_dnd5
 
+
+def roll_dnd5_stats(update, cotnext):
+    conf = config["messages.roll_dnd5stats"]
+    template = conf.get("template")
+    details = Details(crit=conf.getboolean("crit"))
+    parser = DND5StatsParser(template, details_parser=details)
 
 # @run_async
 # def roll_handler(update, context):
@@ -304,6 +311,7 @@ if __name__ == '__main__':
 
     # Commands handlers
     dp.add_handler(CommandHandler('start', start))
+    dp.add_handler(CommandHandler('dnd5stats', roll_dnd5_stats))
     for dice in [2, 4, 6, 8, 10, 12, 20, 100]:
         dp.add_handler(CommandHandler(f"r{dice}", roll_dnd5_generator(dice)))
     dp.add_handler(MessageHandler(Filters.text, roll_genericdice, run_async=True))
