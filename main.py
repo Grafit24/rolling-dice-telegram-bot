@@ -104,12 +104,26 @@ def roll_dnd5_generator(dice):
     return roll_dnd5
 
 
-def roll_dnd5_stats(update, cotnext):
+def roll_dnd5stats(update, cotnext):
     conf = config["messages.roll_dnd5stats"]
-    template = conf.get("template")
-    details = Details(crit=conf.getboolean("crit"))
-    parser = DND5StatsParser(template, details_parser=details)
+    template = conf.get("template_message")
+    details = Details(crit=True, html_highlight=("<strike>", "</strike>"))
+    parser = DND5StatsParser(
+        template, conf.get("template_row"), ":", details_parser=details)
+    count = parser.parse_input(update.message.text)
+    result_stats = DND5Dice.roll_stats(count)
+    return_message = parser.parse_output(
+        result_stats,
+        verbosity=conf.getint("verbosity")
+        )
+    update.message.bot.send_message(
+        chat_id = update.message.chat_id,
+        text=return_message,
+        parse_mode=ParseMode.HTML
+        )
 
+# TODO Fudje Dice Roller
+# TODO Refactoring
 # @run_async
 # def roll_handler(update, context):
 #     # for rerolls 
@@ -311,7 +325,7 @@ if __name__ == '__main__':
 
     # Commands handlers
     dp.add_handler(CommandHandler('start', start))
-    dp.add_handler(CommandHandler('dnd5stats', roll_dnd5_stats))
+    dp.add_handler(CommandHandler('dnd5stats', roll_dnd5stats))
     for dice in [2, 4, 6, 8, 10, 12, 20, 100]:
         dp.add_handler(CommandHandler(f"r{dice}", roll_dnd5_generator(dice)))
     dp.add_handler(MessageHandler(Filters.text, roll_genericdice, run_async=True))
