@@ -2,7 +2,6 @@ import os
 import re
 
 from abc import ABC, abstractmethod
-from unittest import result
 
 class Details:
     def __init__(self, brackets=("[", "]"), crit=True, space=" ", html_highlight=("<b>", "</b>")) -> None:

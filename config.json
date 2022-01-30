@@ -1,0 +1,36 @@
+{
+    "messages.start":{
+        "text":"In Progress..."
+    },
+
+    "messages.roll_genericdice":{
+        "template":"{result} {sep} {details}",
+        "crit":true,
+        "verbosity":2
+    },
+
+    "messages.roll_dnd5":{
+        "template":"{result} {sep} {details}",
+        "crit":true,
+        "verbosity":2
+    },
+
+    "messages.roll_dnd5stats":{
+        "template_message":"{stats}",
+        "template_row":"{result} {sep} {details}",
+        "highlight":true,
+        "verbosity":1
+    },
+
+    "messages.roll_fudje":{
+        "template":"{result} {sep} {details}",
+        "bracket_l":"[",
+        "bracket_r":"]",
+        "html_l":"<b>",
+        "html_r":"</b>",
+        "space":" ",
+        "crit":false,
+        "verbosity":2,
+        "sep":":"
+    }
+}

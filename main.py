@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from ast import parse
 import logging
 import os
 import sys
-import configparser
+import json
 
 from telegram import InlineKeyboardMarkup, message
 from telegram import InlineKeyboardButton
@@ -30,8 +29,8 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 # Config
-config = configparser.ConfigParser()
-config.read(os.getenv("CONFIG"))
+with open(os.getenv("CONFIG")) as f:
+    config = json.load(f)
 
 # Getting mode, so we could define run function for local and Heroku setup
 mode = os.getenv("MODE")
@@ -69,12 +68,12 @@ def start(update, context):
 def roll_genericdice(update, context):
     conf = config["messages.roll_genericdice"]
     template = conf.get("template")
-    details = Details(crit=conf.getboolean("crit"))
+    details = Details(crit=conf.get("crit"))
     parser = GenericDiceParser(template, ":", details_parser=details)
     dices = parser.parse_input(update.message.text)
     result = GenericDice.roll_list(dices)
     return_message = parser.parse_output(
-        result, verbosity=conf.getint("verbosity"))
+        result, verbosity=conf.get("verbosity"))
     update.message.bot.send_message(
         chat_id = update.message.chat_id,
         text=return_message,
@@ -86,13 +85,13 @@ def roll_dnd5_generator(dice):
     def roll_dnd5(update, context):
         conf = config["messages.roll_dnd5"]
         template = conf.get("template")
-        details = Details(crit=conf.getboolean("crit"))
+        details = Details(crit=conf.get("crit"))
         parser = RollsParser(template, "=", details_parser=details)
         count = parser.parse_input(update.message.text)
         result_dice = DND5Dice(count, dice)
         return_message = parser.parse_output(
             result_dice,
-            verbosity=conf.getint("verbosity")
+            verbosity=conf.get("verbosity")
         )
         update.message.bot.send_message(
             chat_id = update.message.chat_id,
@@ -112,7 +111,7 @@ def roll_dnd5stats(update, cotnext):
     result_stats = DND5Dice.roll_stats(count)
     return_message = parser.parse_output(
         result_stats,
-        verbosity=conf.getint("verbosity")
+        verbosity=conf.get("verbosity")
         )
     update.message.bot.send_message(
         chat_id = update.message.chat_id,
@@ -127,7 +126,7 @@ def roll_fudje(update, context):
     sep = conf.get("sep")
     details = Details(
         brackets=(conf.get("bracket_l"), conf.get("bracket_r")),
-        crit=conf.getboolean("crit"),
+        crit=conf.get("crit"),
         space=conf.get("space"),
         html_highlight=(conf.get("html_l"), conf.get("html_r"))
     )
@@ -136,7 +135,7 @@ def roll_fudje(update, context):
     result_dice = FudgeDice(count)
     return_message = parser.parse_output(
         result_dice,
-        verbosity=conf.getint("verbosity")
+        verbosity=conf.get("verbosity")
     )
     update.message.bot.send_message(
         chat_id = update.message.chat_id,
