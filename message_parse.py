@@ -26,11 +26,11 @@ class Details:
                     space=self.space
                     )
         self._washighlight = False
-        return result
+        return result[:-1]
 
     @staticmethod
     def classic_roll_crit(value, dice):
-        return (value == dice.min_value) or (value == dice.dice)
+        return (value == dice.min) or (value == dice.max)
 
     def highlight_dnd5stat(self, value, dice):
         delta = sum(dice.results) - dice.numeric
@@ -93,7 +93,7 @@ class GenericDiceParser(DiceParser):
         return message
 
         
-class DND5RollsParser(DiceParser):
+class RollsParser(DiceParser):
 
     # TODO make more hard parsing (/rN +6 = 1dN + 6 не 6dN)
     def parse_input(self, input_message):
@@ -184,4 +184,3 @@ class DND5StatsParser(DiceParser):
                 raise ValueError("Argument must be Integer!")
             elif int(args[0]) <= 0:
                 raise ValueError(f"Incorrect value {args[0]}<=0!")
-

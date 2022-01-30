@@ -12,14 +12,19 @@ class GenericDice():
         self.count = count
         self.dice = dice
         self._min_value = 1
+        self._max_value = dice
         self._n_rerolls = 0
         self._results = self._roll()
         self._numeric = sum(self._results)
 
     # Properties
     @property
-    def min_value(self):
+    def min(self):
         return self._min_value
+    
+    @property
+    def max(self):
+        return self._max_value
 
     @property
     def count(self):
@@ -200,6 +205,8 @@ class FudgeDice(GenericDice):
         self._n_rerolls = 0
         self._results = self._roll_fudge()
         self._numeric = sum(self._results)
+        self._min_value = -1
+        self._max_value = 1
 
     def _roll_fudge(self) -> Tuple[int]:
         results = GenericDice(self.count, 3).results
